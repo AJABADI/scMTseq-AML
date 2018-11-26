@@ -1,0 +1,249 @@
+--- 
+title: "scMTseq of AML cells - scRNAseq processing"
+author: "Al J Abadi"
+date: "`r Sys.Date()`"
+bibliography:
+- packages.bib
+- citations.bib
+---
+
+```{r setup-1, include=F}
+knitr::opts_chunk$set(cache=T, cache.comment=F, fig.align = 'center')
+## using R file to store params for ease of adjustment across Rmd files
+source('utils/params.R')
+```
+
+# scRNA-seq Data
+
+```{r, message=F, warning=F, fig.show='hide'}
+## libraries
+suppressPackageStartupMessages(library(mixOmics))
+suppressPackageStartupMessages(library(SingleCellExperiment))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(scran))
+suppressPackageStartupMessages(library(scater))
+suppressPackageStartupMessages(library(DESeq2))
+suppressPackageStartupMessages(library(edgeR))
+suppressPackageStartupMessages(library(Rtsne))
+suppressPackageStartupMessages(library(ggplot2)); theme_set(theme_bw())
+suppressPackageStartupMessages(library(ggrepel))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(reshape2))
+```
+
+## Load Raw Data
+
+```{r tablecounts, fig.cap="Overview of data"}
+# system.time({
+        ##  user  system elapsed 
+        ## 1.025   0.068   1.152 
+## read raw scRNAseq counts
+counts.raw = read.csv(io$rna_file)
+## create rownames using the first column
+rownames(counts.raw) = counts.raw[,1]
+counts.raw = counts.raw[,-1]
+head(colnames(counts.raw))
+## change the cell names based on well names
+source('utils//name.cells.by.wells.R')
+colnames(counts.raw) = name.cells.by.wells(colnames(counts.raw), pos.in.string = 'middle')
+head(colnames(counts.raw))
+## create sce object from raw counts
+sce.rna = SingleCellExperiment(assays = list(counts = as.matrix(counts.raw)))
+# })
+```
+
+## Preprocessing
+
+### QC metrics
+
+```{r qc, message=F}
+## add QC metrics
+sce.rna = scater::calculateQCMetrics(sce.rna)
+```
+
+### Cell QC
+
+```{r libsize, out.width="100%", fig.wide=TRUE, fig.cap="Histograms of cell QC metrics including the library sizes and number of expressed genes", fig.align='center', fig.asp=0.45 }
+## show lib. size and the gene expression histograms
+par(mfrow=c(1,2))
+hist(sce.rna$total_counts/1e3, xlab="Library sizes (thousands)", main="", 
+     breaks=20, col="grey80", ylab="Number of cells")
+hist(sce.rna$total_features_by_counts, xlab="Number of expressed genes", main="", 
+     breaks=20, col="grey80", ylab="Number of cells")
+```
+
+### Detect outliers
+
+```{r}
+## lib size too small - 3.5 median abs. deviation less than median
+## chose 3.5 MAD instead of 3 as we don't want to lose the precious cells!
+libsize.drop = isOutlier(sce.rna$total_counts, nmads=3.5, type="lower", log=TRUE)
+sum(libsize.drop) ## nothing dropped
+## expressing low genes
+feature.drop = isOutlier(sce.rna$total_features_by_counts, nmads=3, type="lower", log=TRUE)
+sum(feature.drop) ## nothing dropped
+```
+
+All cells passed QC metrics for lib size and gene expression
+
+### Gene Filtering
+
+#### using mean expression
+
+```{r geneqc1, fig.cap="Histogram of log mean counts for all genes - red shows mean log expression below the assigned cutoff", fig.align='center'}
+## histogram of log mean counts for all genes
+avg.count.cutoff = 1 ## for log2count = 1
+## get size factors
+sce.rna = computeSumFactors(sce.rna)
+ave.counts = calcAverage(sce.rna, use_size_factors=T)
+log2.raw = log2(ave.counts)
+hist = hist(log2.raw, breaks=100, plot = F)
+cuts = cut(hist$breaks, c(-Inf,avg.count.cutoff , Inf))
+plot(hist, col=c('red', 'green')[cuts],
+     xlab=expression(Log[2]~"average count of genes"),  main=paste0(" Histogram of mean expression. \n The green are kept: ",sum(log2.raw>avg.count.cutoff), ' out of ', length(log2.raw) ))
+
+```
+
+```{r}
+## remove lowly expressed genes (<2; log2 <1)
+to.keep = log2.raw > avg.count.cutoff
+sce.rna = sce.rna[to.keep,]
+```
+
+`r sum(to.keep)` genes passed filtering.
+
+## Normalization
+
+### scran
+
+```{r normplotscran, fig.cap="Size factors from deconvolution, plotted against library sizes for all cells. Axes are shown on a log-scale. Since we have similar cell types (and not much DE genes) we expect to see less scatter around the trend line, whcih is the case in this plot.", fig.align='center', warning=F}
+## use scran to pool cells based on gene expression similarity and calculate size factors
+system.time({
+  ##    user  system elapsed 
+   ## 0.366   0.027   0.435 
+sce.rna.scran = computeSumFactors(sce.rna)
+## normalise using calculated size factors
+sce.rna.scran = normalize(sce.rna.scran)
+summary(sizeFactors(sce.rna.scran))
+plot(sizeFactors(sce.rna.scran), sce.rna$total_counts/1e3, log="xy", pch=16, col='purple',
+    ylab="Library size (thousands)", xlab="Size factor", main = "Scran Size Factors")
+})
+```
+
+
+### TMM (edgeR)
+
+```{r normplotTMM, fig.cap="Size factors from TMM method. A trend line is not apparent.", fig.align='center'}
+## TMM
+## create singlecellexperiment object with edgeR normalisation factors
+sce.rna.TMM = sce.rna
+sizeFactors(sce.rna.TMM) = calcNormFactors(counts(sce.rna.TMM))
+sce.rna.TMM = normalize(sce.rna.TMM)
+summary(sizeFactors(sce.rna.TMM))
+plot(sizeFactors(sce.rna.TMM), sce.rna$total_counts/1e3, log="xy", pch=16, col='purple',
+    ylab="Library size (thousands)", xlab="Size factor", main = "TMM Size Factors")
+```
+
+### DESeq2
+
+```{r DESeq2, fig.cap="Size factors from DESeq2 method.", fig.align='center'}
+sce.rna.DESeq2 = sce.rna
+sizeFactors(sce.rna.DESeq2) = estimateSizeFactorsForMatrix(counts(sce.rna.DESeq2))
+## normalize using scater
+sce.rna.DESeq2 = normalize(sce.rna.DESeq2)
+summary(sizeFactors(sce.rna.DESeq2))
+plot(sizeFactors(sce.rna.DESeq2), sce.rna$total_counts/1e3, log="xy", pch=16, col = 'purple',
+    ylab="Library size (thousands)", xlab="Size factor", main = "DESeq2 Size Factors")
+```
+
+## Dimension reduction
+
+We will use *Scran* and *DESeq2* normalisation for dimension reduction.
+
+### PCA
+
+
+#### scran
+
+```{r,out.width="100%", results='hide'}
+## scran
+pca.scran = pca(t(logcounts(sce.rna.scran)), ncomp = 5)
+source('utils/plot.pca.R')
+plot.pca(pca.scran, top = 'scran-normalised')
+```
+
+
+#### DESeq2
+
+```{r,out.width="100%", results='hide'}
+## DESeq2
+pca.DESeq2 = pca(t(logcounts(sce.rna.DESeq2)), ncomp = 5)
+par(mfrow=c(2,2))
+plot.pca(pca.DESeq2, top = 'DESeq2-normalised')
+```
+
+### Hierarchical Clustering
+
+#### HVGs
+
+HVGs are chosen based on highest biological CVs which have a minimum mean expression specified 
+
+```{r hvgs, fig.cap="SD and biological CV against average counts (mean expression)", warning=F}
+source('utils/calc.cv.R')
+n.hvgs = 500 ## number of scRNAseq HVGs to keep for clustering
+## get a matrix of every gene's mean expression and BCV and order genes by BCV and plot BCV vs mean expression; order HVGs
+scran.gene.cv = calc.cv(logcounts(sce.rna.scran), mean.expr.cutoff = 5, n.hvgs = n.hvgs)
+## plot mean expression vs sd and cv
+scran.gene.cv$plot.cv
+
+hvgs = rownames(scran.gene.cv$expr.smry)[1:n.hvgs]
+## reduce sce object
+sce.rna.scran.hvg = sce.rna.scran[hvgs,]
+```
+
+#### Euclidean Distance
+
+```{r heatmap,out.width="70%",fig.cap="Hierarchical clustering using highly variable genes - Euclidean Distance"}
+plotHeatmap(sce.rna.scran.hvg, features = rownames(sce.rna.scran.hvg))
+```
+
+#### Pearson's *r*
+
+```{r heatmap-corr,out.width="70%",fig.cap="Hierarchical clustering using highly variable genes - Pearson's r"}
+plotHeatmap(sce.rna.scran.hvg, features = rownames(sce.rna.scran.hvg), clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation')
+```
+
+### tSNE
+
+For reduced scran-normaised matrix. We get some clusters when perplexity is really low:
+
+```{r tSNE, out.width="100%", fig.cap= "tSNE plots using HVGs", fig.asp=0.5}
+par(mfrow=c(1,2))
+set.seed(12321)
+scran.tsne = Rtsne(t(logcounts(sce.rna.scran.hvg)), perplexity = 2)
+plot(scran.tsne$Y, main = 'tSNE - Perplexity = 2', pch=16, col='blue', xlab = 'tSNE-1', ylab='tSNE-2')
+set.seed(12321)
+scran.tsne = Rtsne(t(logcounts(sce.rna.scran.hvg)), perplexity = 8)
+plot(scran.tsne$Y, main = 'tSNE - Perplexity = 8', pch=16, col='blue', xlab = 'tSNE-1', ylab='')
+```
+
+
+### Looking at UMAP
+
+```{r UMAP, fig.cap="UMAP plot using HVGs"}
+library(umap)
+## UMAP on scran-normalised
+umap.scran.hvg = umap(t(logcounts(sce.rna.scran.hvg)))
+plot(umap.scran.hvg$layout, main = 'UMAP using HVGs', pch=16, col='blue', xlab = 'umap-1', ylab='umap-2')
+```
+
+```{r, echo=F}
+if(io$save.RData){
+  save.name = paste0('scMT_RNA_', Sys.info()['user'],'_',format(Sys.Date(), format='%y%m%d'), '.RData')
+  save.image(file = file.path(io$RData,save.name))
+  save(sce.rna.scran, file = file.path(io$RData,'sce.rna.scran.RData'))
+}
+```
+
+
