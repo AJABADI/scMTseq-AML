@@ -329,7 +329,7 @@ if(!io$use.parsed){</p>
 <a class="sourceLine" id="cb64-4" data-line-number="4">window3kb =<span class="st"> </span><span class="kw">fread</span>(io<span class="op">$</span>met_3kb)</a>
 <a class="sourceLine" id="cb64-5" data-line-number="5">})</a></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  26.339   8.019  22.520</code></pre>
+##  25.729  13.389  29.521</code></pre>
 <div class="sourceCode" id="cb66"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb66-1" data-line-number="1"><span class="kw">system.time</span>({</a>
 <a class="sourceLine" id="cb66-2" data-line-number="2">          <span class="co">##  user  system elapsed </span></a>
 <a class="sourceLine" id="cb66-3" data-line-number="3">          <span class="co">## 4.073   2.501   7.482 </span></a>
@@ -367,7 +367,7 @@ if(!io$use.parsed){</p>
 <a class="sourceLine" id="cb66-35" data-line-number="35">})</a></code></pre></div>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-22-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre><code>##    user  system elapsed 
-##   4.243   2.915   8.711</code></pre>
+##   2.630   4.035   8.152</code></pre>
 <div class="sourceCode" id="cb68"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb68-1" data-line-number="1"><span class="co">## plot a given cell&#39;s weight</span></a>
 <a class="sourceLine" id="cb68-2" data-line-number="2"><span class="kw">plot</span>(window3kb<span class="op">$</span>weight, <span class="kw">as.matrix</span>(window3kb[,<span class="dv">9</span>]), <span class="dt">xlim =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">250</span>), <span class="dt">main=</span> <span class="st">&#39;methylation rate at each window for a </span><span class="ch">\n</span><span class="st"> given cell vs the window coverage&#39;</span>)</a></code></pre></div>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-22-2.png" width="672" style="display: block; margin: auto;" /></p>
@@ -404,7 +404,7 @@ if(!io$use.parsed){</p>
 <a class="sourceLine" id="cb72-20" data-line-number="20">})</a></code></pre></div>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-23-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-23-2.png" width="672" style="display: block; margin: auto;" /></p>
 <pre><code>##    user  system elapsed 
-##  33.614   0.700  34.823</code></pre>
+##  30.754   0.692  31.007</code></pre>
 <div id="dimension-reduction-1" class="section level3">
 <h3><span class="header-section-number">2.2.1</span> Dimension Reduction</h3>
 <div class="sourceCode" id="cb74"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb74-1" data-line-number="1"><span class="kw">system.time</span>({</a>
@@ -415,18 +415,18 @@ if(!io$use.parsed){</p>
 <a class="sourceLine" id="cb74-6" data-line-number="6"><span class="kw">load</span>(<span class="kw">file.path</span>(io<span class="op">$</span>RData,<span class="st">&#39;pca.met.window.RData&#39;</span>))</a>
 <a class="sourceLine" id="cb74-7" data-line-number="7">})</a></code></pre></div>
 <pre><code>##    user  system elapsed 
-##   0.030   0.004   0.047</code></pre>
+##   0.023   0.003   0.028</code></pre>
 <div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb76-1" data-line-number="1"><span class="co">## outliers exist:</span></a>
 <a class="sourceLine" id="cb76-2" data-line-number="2"><span class="kw">source</span>(<span class="st">&#39;utils/plot.pca.R&#39;</span>)</a>
 <a class="sourceLine" id="cb76-3" data-line-number="3"><span class="kw">plot.pca</span>(<span class="dt">gg.pca =</span> gg.pca, <span class="dt">pca.obj =</span> pca.met.window, <span class="dt">top =</span> <span class="st">&#39;PCA - methylation in variable 3kb windows&#39;</span>)</a></code></pre></div>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-24-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre><code>## TableGrob (3 x 2) &quot;arrange&quot;: 5 grobs
-##   z     cells    name                grob
-## 1 1 (2-2,1-1) arrange      gtable[layout]
-## 2 2 (2-2,2-2) arrange      gtable[layout]
-## 3 3 (3-3,1-1) arrange      gtable[layout]
-## 4 4 (3-3,2-2) arrange      gtable[layout]
-## 5 5 (1-1,1-2) arrange text[GRID.text.970]</code></pre>
+##   z     cells    name                 grob
+## 1 1 (2-2,1-1) arrange       gtable[layout]
+## 2 2 (2-2,2-2) arrange       gtable[layout]
+## 3 3 (3-3,1-1) arrange       gtable[layout]
+## 4 4 (3-3,2-2) arrange       gtable[layout]
+## 5 5 (1-1,1-2) arrange text[GRID.text.1062]</code></pre>
 <div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" data-line-number="1"><span class="co">## find outliers</span></a>
 <a class="sourceLine" id="cb78-2" data-line-number="2">variates =<span class="kw">as.data.frame</span>(pca.met.window<span class="op">$</span>variates<span class="op">$</span>X)</a>
 <a class="sourceLine" id="cb78-3" data-line-number="3">variates.ordered =<span class="st"> </span>variates[<span class="kw">order</span>((<span class="kw">abs</span>(variates<span class="op">$</span>PC1)<span class="op">+</span><span class="kw">abs</span>(variates<span class="op">$</span>PC2)<span class="op">+</span><span class="kw">abs</span>(variates<span class="op">$</span>PC3)), <span class="dt">decreasing =</span> T),]</a>
