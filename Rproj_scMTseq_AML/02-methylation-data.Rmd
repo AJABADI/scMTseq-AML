@@ -130,7 +130,7 @@ met.gene.sce.filt_NAs.hvg = met.gene.sce.filt_NAs[met.hvgs.gene,]
 met.prom.sce.filt_NAs.hvg = met.prom.sce.filt_NAs[met.hvgs.prom,]
 ```
 
-<!--> 
+<!--
 impute using DeepCpG and plot the heatmaps:
 
 ```{r, eval=F}
@@ -138,7 +138,7 @@ impute using DeepCpG and plot the heatmaps:
 plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs.hvg), exprs_values = "counts", zlim = c(0,100),
             clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation')
 ```
-<-->
+-->
 
 ### sPLS - Gene Body
 

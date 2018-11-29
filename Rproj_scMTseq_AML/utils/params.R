@@ -12,8 +12,8 @@ params = list(
   ## .bed files for summarissing calls on genomic features
   bedfiles= '../data/scBS-seq/filt',
   RData= '../data/RData',
-  save.RData = T,
-  load.RData= F
+  save.RData = F,
+  load.RData= T
 )
 
 io = params
