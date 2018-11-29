@@ -5,4 +5,4 @@ bookdown::gitbook:
       before: |
         <li><a href="./">Pilot scMTseq of AML cells</a></li>
       after: |
-        <li><a href="https://github.com/AJABADI/scMTseq_AML" target="blank">See on GitHub</a></li>
+        <li><a href="https://github.com/AJABADI/scMTseq-AML/" target="blank">See on GitHub</a></li>
