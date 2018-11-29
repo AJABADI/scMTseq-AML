@@ -177,14 +177,14 @@ plotVar(block.spls, legend = T, title = 'Correlation Circle Plots - Transcriptom
 
 ## 3kb Windows
 
-<!--> 
+<!--
 Add the option to re-summarise the methylation data here:
 if(!io$use.parsed){
 
 } else {
 
 }
-<-->
+-->
 ```{r}
 
 system.time({
