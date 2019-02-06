@@ -12,8 +12,28 @@ params = list(
   ## .bed files for summarissing calls on genomic features
   bedfiles= '../data/scBS-seq/filt',
   RData= '../data/RData',
-  save.RData = F,
-  load.RData= T
+  save.RData = FALSE,
+  load.RData= TRUE, ## for time-taking ones only
+  eval=TRUE, ## FALSE: load session data and just render
+  cache=TRUE,
+  cov.cutoff = 0.5,
+  echo=TRUE,
+  
+  ## gene filtering
+  min.gene.libsize = log10(4), ## minimum log expression
+  max.cell.dropout = 0.95, ## maximum level of cell dropout
+  
+  ## hvgs
+  rna.78cells.hvgs = 2000,
+    ## methylation
+  hvgs_pca = 2000
 )
+
+with(params, stopifnot(all(max.cell.dropout >=0 & max.cell.dropout <=1,
+                           cov.cutoff>=0&cov.cutoff<=1
+                           )))
+
+# with(params, stopifnot())
+
 
 io = params
