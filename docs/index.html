@@ -7,7 +7,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>scMTseq of AML cells - pilot</title>
   <meta name="description" content="Joint methylation and transcriptome sequencing of AML cells">
-  <meta name="generator" content="bookdown 0.7 and GitBook 2.6.7">
+  <meta name="generator" content="bookdown  and GitBook 2.6.7">
 
   <meta property="og:title" content="scMTseq of AML cells - pilot" />
   <meta property="og:type" content="book" />
@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2018-11-29">
+<meta name="date" content="2019-02-07">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,6 +36,7 @@
 <link rel="next" href="scrna-seq-data.html">
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
@@ -47,6 +48,30 @@
 
 
 
+<script type="text/javascript">
+
+// toggle visibility of R source blocks in R Markdown output
+function toggle_R() {
+  var x = document.getElementsByClassName('r');
+  if (x.length == 0) return;
+  function toggle_vis(o) {
+    var d = o.style.display;
+    o.style.display = (d == 'block' || d == '') ? 'none':'block';
+  }
+
+  for (i = 0; i < x.length; i++) {
+    var y = x[i];
+    if (y.tagName.toLowerCase() === 'pre') toggle_vis(y);
+  }
+
+    var elem = document.getElementById("myButton1");
+    if (elem.value === "Hide Global") elem.value = "Show Global";
+    else elem.value = "Hide Global";
+}
+
+document.write('<input onclick="toggle_R();" type="button" value="Hide Global" id="myButton1" style="position: absolute; top: 10%; right: 2%; z-index: 200"></input>')
+
+</script>
 
 
 <style type="text/css">
@@ -134,35 +159,40 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="1.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#load-raw-data"><i class="fa fa-check"></i><b>1.1</b> Load Raw Data</a></li>
 <li class="chapter" data-level="1.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#preprocessing"><i class="fa fa-check"></i><b>1.2</b> Preprocessing</a><ul>
 <li class="chapter" data-level="1.2.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#qc-metrics"><i class="fa fa-check"></i><b>1.2.1</b> QC metrics</a></li>
-<li class="chapter" data-level="1.2.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#cell-qc"><i class="fa fa-check"></i><b>1.2.2</b> Cell QC</a></li>
-<li class="chapter" data-level="1.2.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#detect-outliers"><i class="fa fa-check"></i><b>1.2.3</b> Detect outliers</a></li>
-<li class="chapter" data-level="1.2.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#gene-filtering"><i class="fa fa-check"></i><b>1.2.4</b> Gene Filtering</a></li>
 </ul></li>
-<li class="chapter" data-level="1.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#normalization"><i class="fa fa-check"></i><b>1.3</b> Normalization</a><ul>
+<li class="chapter" data-level="1.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#normalisation"><i class="fa fa-check"></i><b>1.3</b> Normalisation</a><ul>
 <li class="chapter" data-level="1.3.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#scran"><i class="fa fa-check"></i><b>1.3.1</b> scran</a></li>
-<li class="chapter" data-level="1.3.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#tmm-edger"><i class="fa fa-check"></i><b>1.3.2</b> TMM (edgeR)</a></li>
-<li class="chapter" data-level="1.3.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#deseq2"><i class="fa fa-check"></i><b>1.3.3</b> DESeq2</a></li>
 </ul></li>
-<li class="chapter" data-level="1.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#dimension-reduction"><i class="fa fa-check"></i><b>1.4</b> Dimension reduction</a><ul>
+<li class="chapter" data-level="1.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#dimension-reduction---filtered-genes"><i class="fa fa-check"></i><b>1.4</b> Dimension reduction - filtered genes</a><ul>
 <li class="chapter" data-level="1.4.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#pca"><i class="fa fa-check"></i><b>1.4.1</b> PCA</a></li>
-<li class="chapter" data-level="1.4.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#hierarchical-clustering"><i class="fa fa-check"></i><b>1.4.2</b> Hierarchical Clustering</a></li>
-<li class="chapter" data-level="1.4.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#tsne"><i class="fa fa-check"></i><b>1.4.3</b> tSNE</a></li>
-<li class="chapter" data-level="1.4.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#looking-at-umap"><i class="fa fa-check"></i><b>1.4.4</b> Looking at UMAP</a></li>
+<li class="chapter" data-level="1.4.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#variation"><i class="fa fa-check"></i><b>1.4.2</b> Variation</a></li>
+</ul></li>
+<li class="chapter" data-level="1.5" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#dimension-reduction---hvgs"><i class="fa fa-check"></i><b>1.5</b> Dimension reduction - HVGs</a><ul>
+<li class="chapter" data-level="1.5.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#pca-using-hvgs"><i class="fa fa-check"></i><b>1.5.1</b> PCA using HVGS</a></li>
+<li class="chapter" data-level="1.5.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#tsne-does-not-identify-clear-clusters"><i class="fa fa-check"></i><b>1.5.2</b> tSNE does not identify clear clusters</a></li>
+<li class="chapter" data-level="1.5.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#umap-does-not-identify-clear-clusters"><i class="fa fa-check"></i><b>1.5.3</b> UMAP does not identify clear clusters</a></li>
 </ul></li>
 </ul></li>
 <li class="chapter" data-level="2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html"><i class="fa fa-check"></i><b>2</b> scBS-seq Data</a><ul>
-<li class="chapter" data-level="2.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#methylation-and-rnaseq"><i class="fa fa-check"></i><b>2.1</b> Methylation and RNAseq</a><ul>
-<li class="chapter" data-level="2.1.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#filtering-nas"><i class="fa fa-check"></i><b>2.1.1</b> Filtering NAs</a></li>
-<li class="chapter" data-level="2.1.2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#hvgs-in-methylation-data"><i class="fa fa-check"></i><b>2.1.2</b> HVGs in Methylation Data</a></li>
-<li class="chapter" data-level="2.1.3" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#spls---gene-body"><i class="fa fa-check"></i><b>2.1.3</b> sPLS - Gene Body</a></li>
-<li class="chapter" data-level="2.1.4" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#spls---promoter"><i class="fa fa-check"></i><b>2.1.4</b> sPLS - Promoter</a></li>
-<li class="chapter" data-level="2.1.5" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#block-spls"><i class="fa fa-check"></i><b>2.1.5</b> Block sPLS</a></li>
+<li class="chapter" data-level="2.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#data-1"><i class="fa fa-check"></i><b>2.1</b> Data</a></li>
+<li class="chapter" data-level="2.2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#create-sce"><i class="fa fa-check"></i><b>2.2</b> Create sce</a></li>
+<li class="chapter" data-level="2.3" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#summary"><i class="fa fa-check"></i><b>2.3</b> Summary</a></li>
+<li class="chapter" data-level="2.4" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#variance"><i class="fa fa-check"></i><b>2.4</b> Variance</a></li>
+<li class="chapter" data-level="2.5" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#dimension-reduction"><i class="fa fa-check"></i><b>2.5</b> Dimension reduction</a></li>
 </ul></li>
-<li class="chapter" data-level="2.2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#kb-windows"><i class="fa fa-check"></i><b>2.2</b> 3kb Windows</a><ul>
-<li class="chapter" data-level="2.2.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#dimension-reduction-1"><i class="fa fa-check"></i><b>2.2.1</b> Dimension Reduction</a></li>
+<li class="chapter" data-level="3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html"><i class="fa fa-check"></i><b>3</b> scM&amp;T-seq analysis</a><ul>
+<li class="chapter" data-level="3.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#correlation"><i class="fa fa-check"></i><b>3.1</b> Correlation</a><ul>
+<li class="chapter" data-level="3.1.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#pearson-correlation-study-of-methylation-rate-and-expression---gene-wise"><i class="fa fa-check"></i><b>3.1.1</b> Pearson correlation study of methylation rate and expression - gene wise</a></li>
+<li class="chapter" data-level="3.1.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#does-the-variation-in-methylation-in-genebody-correlates-with-variation-in-expression"><i class="fa fa-check"></i><b>3.1.2</b> Does the variation in methylation in genebody correlates with variation in expression?</a></li>
 </ul></li>
+<li class="chapter" data-level="3.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#canonical-correlation-study"><i class="fa fa-check"></i><b>3.2</b> Canonical correlation study</a><ul>
+<li class="chapter" data-level="3.2.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#trascriptome---promoter-methylome"><i class="fa fa-check"></i><b>3.2.1</b> Trascriptome - Promoter Methylome</a></li>
+<li class="chapter" data-level="3.2.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#run-using-highly-variable-genes"><i class="fa fa-check"></i><b>3.2.2</b> Run using highly variable genes</a></li>
+<li class="chapter" data-level="3.2.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#more-strict-filtering-by-coverage"><i class="fa fa-check"></i><b>3.2.3</b> More strict filtering by coverage</a></li>
 </ul></li>
-<li class="chapter" data-level="3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html"><i class="fa fa-check"></i><b>3</b> scM&amp;T-seq analysis</a></li>
+<li class="chapter" data-level="3.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#outlier-cells-diagnostics"><i class="fa fa-check"></i><b>3.3</b> Outlier cells diagnostics:</a></li>
+<li class="chapter" data-level="3.4" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#block-spls"><i class="fa fa-check"></i><b>3.4</b> Block sPLS</a></li>
+</ul></li>
 <li class="divider"></li>
 <li><a href="https://github.com/AJABADI/scMTseq-AML/" target="blank">See on GitHub</a></li>
 </ul>
@@ -184,48 +214,44 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
             <section class="normal" id="section-">
 <div id="header">
 <h1 class="title">scMTseq of AML cells - pilot</h1>
-<h4 class="author"><em>Al J Abadi</em></h4>
-<h4 class="date"><em>2018-11-29</em></h4>
+<p class="author"><em>Al J Abadi</em></p>
+<p class="date"><em>2019-02-07</em></p>
 </div>
 <div id="data" class="section level1 unnumbered">
 <h1>Data</h1>
 <p>Data from Dr Heather Lee lab from The University of Newcastle.</p>
-<p>The cells are from the Kasumi-1 AML cell line. Cell identifiers are given by a letter (indicating plate row), and a number (indicating plate column), e.g. <em><em>A7</em></em>, <em><em>C10</em></em>.</p>
-<ul>
-<li><strong>scRNA-seq Data</strong></li>
-</ul>
-<p>Count matrices which are quality controlled.</p>
-<ul>
-<li><strong>scBS-seq Data</strong></li>
-</ul>
-<p>Each .cov file in which each line is a cytosine residue, and the columns are as follows:
-<chromosome> <position> <strand> <count methylated> <count unmethylated> <C-context> <trinucleotide context>
-These reports are produced by Bismark. The functional element is ill defined. Sometimes we look at promoters, sometimes enhancers, sometimes unbiased - occasionally overlapping - 3kb windows to ensure minimisation of missed genomic features.</p>
-<p>40 cells amcth those from RNA-seq.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="co">## update as needed.</span></a>
-<a class="sourceLine" id="cb1-2" data-line-number="2"><span class="co">## installing the required packages for this analysis, if necessary</span></a>
-<a class="sourceLine" id="cb1-3" data-line-number="3">required.pkgs =<span class="st"> </span><span class="kw">c</span>(<span class="st">&#39;mixOmics&#39;</span>,<span class="st">&#39;SingleCellExperiment&#39;</span>,<span class="st">&#39;scran&#39;</span>,<span class="st">&#39;data.table&#39;</span>,</a>
-<a class="sourceLine" id="cb1-4" data-line-number="4">                  <span class="st">&#39;DESeq2&#39;</span>, <span class="st">&#39;edgeR&#39;</span>, <span class="st">&#39;Rtsne&#39;</span>, <span class="st">&#39;ggplot2&#39;</span>, <span class="st">&#39;ggrepel&#39;</span>, <span class="st">&#39;gridExtra&#39;</span>,</a>
-<a class="sourceLine" id="cb1-5" data-line-number="5">                  <span class="st">&#39;grid&#39;</span>, <span class="st">&#39;reshape2&#39;</span>,</a>
-<a class="sourceLine" id="cb1-6" data-line-number="6">                  <span class="co">## for summarising</span></a>
-<a class="sourceLine" id="cb1-7" data-line-number="7">                  <span class="st">&#39;seqinr&#39;</span>, <span class="st">&#39;stringr&#39;</span>, <span class="st">&#39;doParallel&#39;</span>, <span class="st">&#39;argparse&#39;</span></a>
-<a class="sourceLine" id="cb1-8" data-line-number="8">                  )</a></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="co">## make sure Biocmanager is installed</span></a>
-<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">&#39;BiocManager&#39;</span>, <span class="dt">quietly =</span> T)){</a>
-<a class="sourceLine" id="cb2-3" data-line-number="3">  <span class="kw">paste</span>(<span class="st">&#39;Trying to install BiocManager&#39;</span>)</a>
-<a class="sourceLine" id="cb2-4" data-line-number="4">  <span class="kw">install.packages</span>(<span class="st">&#39;BiocManager&#39;</span>)</a>
-<a class="sourceLine" id="cb2-5" data-line-number="5">}</a></code></pre></div>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="co">## package installer function - for those not already installed</span></a>
-<a class="sourceLine" id="cb3-2" data-line-number="2">package.installer =<span class="st"> </span><span class="cf">function</span>(<span class="dt">pkgs=</span>required.pkgs){</a>
-<a class="sourceLine" id="cb3-3" data-line-number="3">  <span class="cf">for</span> (package <span class="cf">in</span> pkgs){</a>
-<a class="sourceLine" id="cb3-4" data-line-number="4">    <span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(package, <span class="dt">quietly =</span> T)){</a>
-<a class="sourceLine" id="cb3-5" data-line-number="5">  <span class="kw">paste0</span>(<span class="st">&#39;Trying to install &#39;</span>, package)</a>
-<a class="sourceLine" id="cb3-6" data-line-number="6">  BiocManager<span class="op">::</span><span class="kw">install</span>(package, <span class="dt">update =</span> F)</a>
-<a class="sourceLine" id="cb3-7" data-line-number="7">    }</a>
-<a class="sourceLine" id="cb3-8" data-line-number="8">    }</a>
-<a class="sourceLine" id="cb3-9" data-line-number="9">}</a>
-<a class="sourceLine" id="cb3-10" data-line-number="10"><span class="co">## run function</span></a>
-<a class="sourceLine" id="cb3-11" data-line-number="11"><span class="kw">package.installer</span>(required.pkgs)</a></code></pre></div>
+<!-- The cells are from the Kasumi-1 AML cell line. Cell identifiers are given by a letter (indicating plate row), and a number (indicating plate column), e.g. *_A7_*, *_C10_*. -->
+<!-- +  **scRNA-seq Data** -->
+<!-- Count matrices which are quality controlled. -->
+<!-- +  **scBS-seq Data** -->
+<!-- Each .cov file in which each line is a cytosine residue, and the columns are as follows: -->
+<!-- <chromosome>  <position>  <strand>  <count methylated>  <count unmethylated>  <C-context> <trinucleotide context> -->
+<!-- These reports are produced by Bismark. The functional element is ill defined. Sometimes we look at promoters, sometimes enhancers, sometimes unbiased - occasionally overlapping - 3kb windows to ensure minimisation of missed genomic features. -->
+<!-- 40 cells amcth those from RNA-seq. -->
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## update as needed.</span>
+<span class="co">## installing the required packages for this analysis, if necessary</span>
+required.pkgs =<span class="st"> </span><span class="kw">c</span>(<span class="st">&#39;mixOmics&#39;</span>,<span class="st">&#39;SingleCellExperiment&#39;</span>,<span class="st">&#39;scran&#39;</span>,<span class="st">&#39;data.table&#39;</span>,
+                  <span class="st">&#39;DESeq2&#39;</span>, <span class="st">&#39;edgeR&#39;</span>, <span class="st">&#39;Rtsne&#39;</span>, <span class="st">&#39;ggplot2&#39;</span>, <span class="st">&#39;ggrepel&#39;</span>, <span class="st">&#39;gridExtra&#39;</span>,
+                  <span class="st">&#39;grid&#39;</span>, <span class="st">&#39;reshape2&#39;</span>,
+                  <span class="co">## for summarising</span>
+                  <span class="st">&#39;seqinr&#39;</span>, <span class="st">&#39;stringr&#39;</span>, <span class="st">&#39;doParallel&#39;</span>, <span class="st">&#39;argparse&#39;</span>
+                  )</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## make sure Biocmanager is installed</span>
+<span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">&#39;BiocManager&#39;</span>, <span class="dt">quietly =</span> T)){
+  <span class="kw">paste</span>(<span class="st">&#39;Trying to install BiocManager&#39;</span>)
+  <span class="kw">install.packages</span>(<span class="st">&#39;BiocManager&#39;</span>)
+}</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## package installer function - for those not already installed</span>
+package.installer =<span class="st"> </span><span class="cf">function</span>(<span class="dt">pkgs=</span>required.pkgs){
+  <span class="cf">for</span> (package <span class="cf">in</span> pkgs){
+    <span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(package, <span class="dt">quietly =</span> T)){
+  <span class="kw">paste0</span>(<span class="st">&#39;Trying to install &#39;</span>, package)
+  BiocManager<span class="op">::</span><span class="kw">install</span>(package, <span class="dt">update =</span> F)
+    }
+    }
+}
+<span class="co">## run function</span>
+<span class="kw">package.installer</span>(required.pkgs)</code></pre>
 <!-- Activate when params are finalised and defined in YAML -->
 <!-- ```{r} -->
 <!-- ## I/O -->
@@ -244,10 +270,6 @@ These reports are produced by Bismark. The functional element is ill defined. So
 <!--   io$bedfiles = params$bedfiles ## '../data/scBS-seq/filt' -->
 <!--   io$RData = params$RData ## save rdata -->
 <!-- ``` -->
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="co">## check for validity of inputs</span></a>
-<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="kw">stopifnot</span>(<span class="kw">file.exists</span>(io<span class="op">$</span>rna_file), <span class="op">!</span>io<span class="op">$</span>use.parsed<span class="op">||</span><span class="kw">file.exists</span>(io<span class="op">$</span>met_1bp_out), io<span class="op">$</span>use.parsed<span class="op">||</span><span class="kw">file.exists</span>(io<span class="op">$</span>bedfiles))</a>
-<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="co">## for reproducibility</span></a>
-<a class="sourceLine" id="cb4-4" data-line-number="4"><span class="kw">set.seed</span>(<span class="dv">1234321</span>)</a></code></pre></div>
 
 </div>
             </section>
@@ -276,7 +298,7 @@ gitbook.start({
 "google": false,
 "linkedin": false,
 "weibo": false,
-"instapper": false,
+"instapaper": false,
 "vk": false,
 "all": ["facebook", "google", "twitter", "linkedin", "weibo", "instapaper"]
 },
@@ -286,6 +308,10 @@ gitbook.start({
 "size": 2
 },
 "edit": {
+"link": null,
+"text": null
+},
+"history": {
 "link": null,
 "text": null
 },

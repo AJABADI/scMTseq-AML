@@ -5,11 +5,11 @@
 
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>scMTseq of AML cells - pilot</title>
+  <title>Chapter 2 scBS-seq Data | scMTseq of AML cells - pilot</title>
   <meta name="description" content="Joint methylation and transcriptome sequencing of AML cells">
-  <meta name="generator" content="bookdown 0.7 and GitBook 2.6.7">
+  <meta name="generator" content="bookdown  and GitBook 2.6.7">
 
-  <meta property="og:title" content="scMTseq of AML cells - pilot" />
+  <meta property="og:title" content="Chapter 2 scBS-seq Data | scMTseq of AML cells - pilot" />
   <meta property="og:type" content="book" />
   
   
@@ -17,7 +17,7 @@
   
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="scMTseq of AML cells - pilot" />
+  <meta name="twitter:title" content="Chapter 2 scBS-seq Data | scMTseq of AML cells - pilot" />
   
   <meta name="twitter:description" content="Joint methylation and transcriptome sequencing of AML cells" />
   
@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2018-11-29">
+<meta name="date" content="2019-02-07">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,6 +36,7 @@
 <link rel="next" href="scmt-seq-analysis.html">
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
@@ -47,6 +48,30 @@
 
 
 
+<script type="text/javascript">
+
+// toggle visibility of R source blocks in R Markdown output
+function toggle_R() {
+  var x = document.getElementsByClassName('r');
+  if (x.length == 0) return;
+  function toggle_vis(o) {
+    var d = o.style.display;
+    o.style.display = (d == 'block' || d == '') ? 'none':'block';
+  }
+
+  for (i = 0; i < x.length; i++) {
+    var y = x[i];
+    if (y.tagName.toLowerCase() === 'pre') toggle_vis(y);
+  }
+
+    var elem = document.getElementById("myButton1");
+    if (elem.value === "Hide Global") elem.value = "Show Global";
+    else elem.value = "Hide Global";
+}
+
+document.write('<input onclick="toggle_R();" type="button" value="Hide Global" id="myButton1" style="position: absolute; top: 10%; right: 2%; z-index: 200"></input>')
+
+</script>
 
 
 <style type="text/css">
@@ -134,35 +159,40 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="1.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#load-raw-data"><i class="fa fa-check"></i><b>1.1</b> Load Raw Data</a></li>
 <li class="chapter" data-level="1.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#preprocessing"><i class="fa fa-check"></i><b>1.2</b> Preprocessing</a><ul>
 <li class="chapter" data-level="1.2.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#qc-metrics"><i class="fa fa-check"></i><b>1.2.1</b> QC metrics</a></li>
-<li class="chapter" data-level="1.2.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#cell-qc"><i class="fa fa-check"></i><b>1.2.2</b> Cell QC</a></li>
-<li class="chapter" data-level="1.2.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#detect-outliers"><i class="fa fa-check"></i><b>1.2.3</b> Detect outliers</a></li>
-<li class="chapter" data-level="1.2.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#gene-filtering"><i class="fa fa-check"></i><b>1.2.4</b> Gene Filtering</a></li>
 </ul></li>
-<li class="chapter" data-level="1.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#normalization"><i class="fa fa-check"></i><b>1.3</b> Normalization</a><ul>
+<li class="chapter" data-level="1.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#normalisation"><i class="fa fa-check"></i><b>1.3</b> Normalisation</a><ul>
 <li class="chapter" data-level="1.3.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#scran"><i class="fa fa-check"></i><b>1.3.1</b> scran</a></li>
-<li class="chapter" data-level="1.3.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#tmm-edger"><i class="fa fa-check"></i><b>1.3.2</b> TMM (edgeR)</a></li>
-<li class="chapter" data-level="1.3.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#deseq2"><i class="fa fa-check"></i><b>1.3.3</b> DESeq2</a></li>
 </ul></li>
-<li class="chapter" data-level="1.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#dimension-reduction"><i class="fa fa-check"></i><b>1.4</b> Dimension reduction</a><ul>
+<li class="chapter" data-level="1.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#dimension-reduction---filtered-genes"><i class="fa fa-check"></i><b>1.4</b> Dimension reduction - filtered genes</a><ul>
 <li class="chapter" data-level="1.4.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#pca"><i class="fa fa-check"></i><b>1.4.1</b> PCA</a></li>
-<li class="chapter" data-level="1.4.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#hierarchical-clustering"><i class="fa fa-check"></i><b>1.4.2</b> Hierarchical Clustering</a></li>
-<li class="chapter" data-level="1.4.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#tsne"><i class="fa fa-check"></i><b>1.4.3</b> tSNE</a></li>
-<li class="chapter" data-level="1.4.4" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#looking-at-umap"><i class="fa fa-check"></i><b>1.4.4</b> Looking at UMAP</a></li>
+<li class="chapter" data-level="1.4.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#variation"><i class="fa fa-check"></i><b>1.4.2</b> Variation</a></li>
+</ul></li>
+<li class="chapter" data-level="1.5" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#dimension-reduction---hvgs"><i class="fa fa-check"></i><b>1.5</b> Dimension reduction - HVGs</a><ul>
+<li class="chapter" data-level="1.5.1" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#pca-using-hvgs"><i class="fa fa-check"></i><b>1.5.1</b> PCA using HVGS</a></li>
+<li class="chapter" data-level="1.5.2" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#tsne-does-not-identify-clear-clusters"><i class="fa fa-check"></i><b>1.5.2</b> tSNE does not identify clear clusters</a></li>
+<li class="chapter" data-level="1.5.3" data-path="scrna-seq-data.html"><a href="scrna-seq-data.html#umap-does-not-identify-clear-clusters"><i class="fa fa-check"></i><b>1.5.3</b> UMAP does not identify clear clusters</a></li>
 </ul></li>
 </ul></li>
 <li class="chapter" data-level="2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html"><i class="fa fa-check"></i><b>2</b> scBS-seq Data</a><ul>
-<li class="chapter" data-level="2.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#methylation-and-rnaseq"><i class="fa fa-check"></i><b>2.1</b> Methylation and RNAseq</a><ul>
-<li class="chapter" data-level="2.1.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#filtering-nas"><i class="fa fa-check"></i><b>2.1.1</b> Filtering NAs</a></li>
-<li class="chapter" data-level="2.1.2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#hvgs-in-methylation-data"><i class="fa fa-check"></i><b>2.1.2</b> HVGs in Methylation Data</a></li>
-<li class="chapter" data-level="2.1.3" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#spls---gene-body"><i class="fa fa-check"></i><b>2.1.3</b> sPLS - Gene Body</a></li>
-<li class="chapter" data-level="2.1.4" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#spls---promoter"><i class="fa fa-check"></i><b>2.1.4</b> sPLS - Promoter</a></li>
-<li class="chapter" data-level="2.1.5" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#block-spls"><i class="fa fa-check"></i><b>2.1.5</b> Block sPLS</a></li>
+<li class="chapter" data-level="2.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#data-1"><i class="fa fa-check"></i><b>2.1</b> Data</a></li>
+<li class="chapter" data-level="2.2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#create-sce"><i class="fa fa-check"></i><b>2.2</b> Create sce</a></li>
+<li class="chapter" data-level="2.3" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#summary"><i class="fa fa-check"></i><b>2.3</b> Summary</a></li>
+<li class="chapter" data-level="2.4" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#variance"><i class="fa fa-check"></i><b>2.4</b> Variance</a></li>
+<li class="chapter" data-level="2.5" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#dimension-reduction"><i class="fa fa-check"></i><b>2.5</b> Dimension reduction</a></li>
 </ul></li>
-<li class="chapter" data-level="2.2" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#kb-windows"><i class="fa fa-check"></i><b>2.2</b> 3kb Windows</a><ul>
-<li class="chapter" data-level="2.2.1" data-path="scbs-seq-data.html"><a href="scbs-seq-data.html#dimension-reduction-1"><i class="fa fa-check"></i><b>2.2.1</b> Dimension Reduction</a></li>
+<li class="chapter" data-level="3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html"><i class="fa fa-check"></i><b>3</b> scM&amp;T-seq analysis</a><ul>
+<li class="chapter" data-level="3.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#correlation"><i class="fa fa-check"></i><b>3.1</b> Correlation</a><ul>
+<li class="chapter" data-level="3.1.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#pearson-correlation-study-of-methylation-rate-and-expression---gene-wise"><i class="fa fa-check"></i><b>3.1.1</b> Pearson correlation study of methylation rate and expression - gene wise</a></li>
+<li class="chapter" data-level="3.1.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#does-the-variation-in-methylation-in-genebody-correlates-with-variation-in-expression"><i class="fa fa-check"></i><b>3.1.2</b> Does the variation in methylation in genebody correlates with variation in expression?</a></li>
 </ul></li>
+<li class="chapter" data-level="3.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#canonical-correlation-study"><i class="fa fa-check"></i><b>3.2</b> Canonical correlation study</a><ul>
+<li class="chapter" data-level="3.2.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#trascriptome---promoter-methylome"><i class="fa fa-check"></i><b>3.2.1</b> Trascriptome - Promoter Methylome</a></li>
+<li class="chapter" data-level="3.2.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#run-using-highly-variable-genes"><i class="fa fa-check"></i><b>3.2.2</b> Run using highly variable genes</a></li>
+<li class="chapter" data-level="3.2.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#more-strict-filtering-by-coverage"><i class="fa fa-check"></i><b>3.2.3</b> More strict filtering by coverage</a></li>
 </ul></li>
-<li class="chapter" data-level="3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html"><i class="fa fa-check"></i><b>3</b> scM&amp;T-seq analysis</a></li>
+<li class="chapter" data-level="3.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#outlier-cells-diagnostics"><i class="fa fa-check"></i><b>3.3</b> Outlier cells diagnostics:</a></li>
+<li class="chapter" data-level="3.4" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#block-spls"><i class="fa fa-check"></i><b>3.4</b> Block sPLS</a></li>
+</ul></li>
 <li class="divider"></li>
 <li><a href="https://github.com/AJABADI/scMTseq-AML/" target="blank">See on GitHub</a></li>
 </ul>
@@ -184,103 +214,86 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
             <section class="normal" id="section-">
 <div id="scbs-seq-data" class="section level1">
 <h1><span class="header-section-number">Chapter 2</span> scBS-seq Data</h1>
-<div id="methylation-and-rnaseq" class="section level2">
-<h2><span class="header-section-number">2.1</span> Methylation and RNAseq</h2>
-<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb37-1" data-line-number="1"><span class="co"># load(file.path(io$outdir,save.name))</span></a>
-<a class="sourceLine" id="cb37-2" data-line-number="2"><span class="co"># system.time({</span></a>
-<a class="sourceLine" id="cb37-3" data-line-number="3">     <span class="co">## user  system elapsed </span></a>
-<a class="sourceLine" id="cb37-4" data-line-number="4">     <span class="co">## 4.890   0.830   4.893 </span></a>
-<a class="sourceLine" id="cb37-5" data-line-number="5"><span class="co">## choose sce.rna.scran as default rna sce</span></a>
-<a class="sourceLine" id="cb37-6" data-line-number="6"><span class="co">## HVGs will be considred based on methylation later</span></a>
-<a class="sourceLine" id="cb37-7" data-line-number="7"><span class="kw">load</span>(<span class="kw">file.path</span>(io<span class="op">$</span>RData,<span class="st">&#39;sce.rna.scran.RData&#39;</span>))</a>
-<a class="sourceLine" id="cb37-8" data-line-number="8">rna.sce =<span class="st"> </span>sce.rna.scran</a>
-<a class="sourceLine" id="cb37-9" data-line-number="9"></a>
-<a class="sourceLine" id="cb37-10" data-line-number="10"><span class="co">## load the methylation data</span></a>
-<a class="sourceLine" id="cb37-11" data-line-number="11">met =<span class="st"> </span><span class="kw">fread</span>(io<span class="op">$</span>met_1bp_out)</a>
-<a class="sourceLine" id="cb37-12" data-line-number="12">annos =<span class="st"> </span><span class="kw">unique</span>(met<span class="op">$</span>anno) <span class="co">## get annotations</span></a>
-<a class="sourceLine" id="cb37-13" data-line-number="13"><span class="co">## keep only the well number as the sample name</span></a>
-<a class="sourceLine" id="cb37-14" data-line-number="14"><span class="co"># unique(met$sample)</span></a>
-<a class="sourceLine" id="cb37-15" data-line-number="15"><span class="co">## the following code is fast but only works if the well names are 2 character long and at the beginning on the string</span></a>
-<a class="sourceLine" id="cb37-16" data-line-number="16"><span class="co">## if wells such as A12 are present (with 3 or more characters) the function name.cells.by.wells should be called</span></a>
-<a class="sourceLine" id="cb37-17" data-line-number="17">met<span class="op">$</span>sample =<span class="st"> </span><span class="kw">substr</span>(met<span class="op">$</span>sample,<span class="dv">0</span>,<span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb37-18" data-line-number="18"></a>
-<a class="sourceLine" id="cb37-19" data-line-number="19"><span class="kw">length</span>(<span class="kw">unique</span>(met<span class="op">$</span>sample))</a></code></pre></div>
-<pre><code>## [1] 40</code></pre>
-<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb39-1" data-line-number="1"><span class="kw">length</span>(<span class="kw">colnames</span>(rna.sce))</a></code></pre></div>
-<pre><code>## [1] 78</code></pre>
-<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb41-1" data-line-number="1"><span class="co">## find the common cells in both studies</span></a>
-<a class="sourceLine" id="cb41-2" data-line-number="2">cell.intersect =<span class="st"> </span><span class="kw">Reduce</span>(intersect, <span class="kw">list</span>(<span class="kw">unique</span>(met<span class="op">$</span>sample), <span class="kw">colnames</span>(rna.sce)))</a>
-<a class="sourceLine" id="cb41-3" data-line-number="3"><span class="kw">length</span>(cell.intersect)</a></code></pre></div>
-<pre><code>## [1] 40</code></pre>
-<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb43-1" data-line-number="1"><span class="co">## keep only common cells</span></a>
-<a class="sourceLine" id="cb43-2" data-line-number="2">met =<span class="st"> </span>met[sample <span class="op">%in%</span><span class="st"> </span>cell.intersect]</a>
-<a class="sourceLine" id="cb43-3" data-line-number="3">rna.sce =<span class="st"> </span>rna.sce[,<span class="kw">colnames</span>(rna.sce) <span class="op">%in%</span><span class="st"> </span>cell.intersect]</a>
-<a class="sourceLine" id="cb43-4" data-line-number="4"></a>
-<a class="sourceLine" id="cb43-5" data-line-number="5"><span class="co">## create a data.table of rates and weights where genes are rows and samples are columns for each annotation</span></a>
-<a class="sourceLine" id="cb43-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb43-7" data-line-number="7"><span class="co"># for (i in annos[c(1,4)]){ ## only genebody and promoter for now</span></a>
-<a class="sourceLine" id="cb43-8" data-line-number="8"><span class="co">#   ## create the rate matrix for each annotation</span></a>
-<a class="sourceLine" id="cb43-9" data-line-number="9"><span class="co">#   assign(paste0(&#39;met.&#39;,i,&#39;.rate&#39;),</span></a>
-<a class="sourceLine" id="cb43-10" data-line-number="10"><span class="co">#          dcast(met[anno==i], id~sample, value.var = &#39;rate&#39;))</span></a>
-<a class="sourceLine" id="cb43-11" data-line-number="11"><span class="co"># </span></a>
-<a class="sourceLine" id="cb43-12" data-line-number="12"><span class="co">#   ## create the weight matrix for each annotation</span></a>
-<a class="sourceLine" id="cb43-13" data-line-number="13"><span class="co">#   assign(paste0(&#39;met.&#39;,i,&#39;.weight&#39;),</span></a>
-<a class="sourceLine" id="cb43-14" data-line-number="14"><span class="co">#          dcast(met[anno==i], id~sample, value.var = &#39;weight&#39;))</span></a>
-<a class="sourceLine" id="cb43-15" data-line-number="15"><span class="co"># </span></a>
-<a class="sourceLine" id="cb43-16" data-line-number="16"><span class="co"># }</span></a>
-<a class="sourceLine" id="cb43-17" data-line-number="17"></a>
-<a class="sourceLine" id="cb43-18" data-line-number="18"><span class="co">## methylation in genebody</span></a>
-<a class="sourceLine" id="cb43-19" data-line-number="19">met.genebody.rate =<span class="st"> </span><span class="kw">dcast</span>(met[anno<span class="op">==</span><span class="st">&#39;genebody&#39;</span>], id<span class="op">~</span>sample, <span class="dt">value.var =</span> <span class="st">&#39;rate&#39;</span>)</a>
-<a class="sourceLine" id="cb43-20" data-line-number="20"><span class="kw">rownames</span>(met.genebody.rate) =<span class="st"> </span>met.genebody.rate<span class="op">$</span>id</a>
-<a class="sourceLine" id="cb43-21" data-line-number="21">met.genebody.rate<span class="op">$</span>id =<span class="st"> </span><span class="ot">NULL</span></a>
-<a class="sourceLine" id="cb43-22" data-line-number="22"></a>
-<a class="sourceLine" id="cb43-23" data-line-number="23"><span class="co">## methylation in promoters</span></a>
-<a class="sourceLine" id="cb43-24" data-line-number="24">met.prom.rate =<span class="st"> </span><span class="kw">dcast</span>(met[anno<span class="op">==</span><span class="st">&#39;prom&#39;</span>], id<span class="op">~</span>sample, <span class="dt">value.var =</span> <span class="st">&#39;rate&#39;</span>)</a>
-<a class="sourceLine" id="cb43-25" data-line-number="25"><span class="kw">rownames</span>(met.prom.rate) =<span class="st"> </span>met.prom.rate<span class="op">$</span>id</a>
-<a class="sourceLine" id="cb43-26" data-line-number="26">met.prom.rate<span class="op">$</span>id =<span class="st"> </span><span class="ot">NULL</span></a>
-<a class="sourceLine" id="cb43-27" data-line-number="27"></a>
-<a class="sourceLine" id="cb43-28" data-line-number="28"><span class="co">## create sce from genebody and promoter methylation data</span></a>
-<a class="sourceLine" id="cb43-29" data-line-number="29">met.gene.sce =<span class="st"> </span><span class="kw">SingleCellExperiment</span>(<span class="dt">assays =</span> <span class="kw">list</span>(<span class="dt">counts =</span> <span class="kw">as.matrix</span>(met.genebody.rate)))</a>
-<a class="sourceLine" id="cb43-30" data-line-number="30">met.prom.sce =<span class="st"> </span><span class="kw">SingleCellExperiment</span>(<span class="dt">assays =</span> <span class="kw">list</span>(<span class="dt">counts =</span> <span class="kw">as.matrix</span>(met.prom.rate)))</a>
-<a class="sourceLine" id="cb43-31" data-line-number="31"><span class="co"># })</span></a></code></pre></div>
-<div id="filtering-nas" class="section level3">
-<h3><span class="header-section-number">2.1.1</span> Filtering NAs</h3>
-<div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb44-1" data-line-number="1"><span class="co">## How many NAs in each gene? Out of 40 cells</span></a>
-<a class="sourceLine" id="cb44-2" data-line-number="2">metNAs.gene =<span class="st"> </span><span class="kw">rowSums</span>(<span class="kw">is.na</span>(<span class="kw">counts</span>(met.gene.sce)))</a>
-<a class="sourceLine" id="cb44-3" data-line-number="3">metNAs.prom =<span class="st"> </span><span class="kw">rowSums</span>(<span class="kw">is.na</span>(<span class="kw">counts</span>(met.prom.sce)))</a>
-<a class="sourceLine" id="cb44-4" data-line-number="4"><span class="kw">hist</span>(metNAs.gene, <span class="dt">main =</span> <span class="st">&#39;histogram of NAs for all genes - gene body&#39;</span>, <span class="dt">xlab =</span> <span class="st">&#39;Number of NA cells&#39;</span>)</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-12-1.png" width="672" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb45-1" data-line-number="1"><span class="kw">hist</span>(metNAs.prom, <span class="dt">main =</span> <span class="st">&#39;histogram of NAs for all genes - promoter&#39;</span>, <span class="dt">xlab =</span> <span class="st">&#39;Number of NA cells&#39;</span>)</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-12-2.png" width="672" style="display: block; margin: auto;" />
-The promoter methylation data contain much more NAs, as expected.</p>
-<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb46-1" data-line-number="1">NA.threshold=<span class="dv">20</span> <span class="co">## number of cells having NA values</span></a>
-<a class="sourceLine" id="cb46-2" data-line-number="2"><span class="co">## filter those with number of NAs more than NA.threshold</span></a>
-<a class="sourceLine" id="cb46-3" data-line-number="3">met.gene.sce.filt_NAs =<span class="st"> </span>met.gene.sce[<span class="kw">names</span>(metNAs.gene[metNAs.gene<span class="op">&lt;=</span>NA.threshold]),]</a>
-<a class="sourceLine" id="cb46-4" data-line-number="4">met.prom.sce.filt_NAs =<span class="st"> </span>met.prom.sce[<span class="kw">names</span>(metNAs.prom[metNAs.prom<span class="op">&lt;=</span>NA.threshold]),]</a>
-<a class="sourceLine" id="cb46-5" data-line-number="5"><span class="co">## number of genes/cells in filtered SCEs</span></a>
-<a class="sourceLine" id="cb46-6" data-line-number="6"><span class="kw">dim</span>(met.gene.sce.filt_NAs)</a></code></pre></div>
-<pre><code>## [1] 15930    40</code></pre>
-<div class="sourceCode" id="cb48"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb48-1" data-line-number="1"><span class="kw">dim</span>(met.prom.sce.filt_NAs)</a></code></pre></div>
-<pre><code>## [1] 6364   40</code></pre>
+<p>40 cells matching RNA-seq data</p>
+<div id="data-1" class="section level2">
+<h2><span class="header-section-number">2.1</span> Data</h2>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## load the methylation data</span>
+met =<span class="st"> </span><span class="kw">fread</span>(io<span class="op">$</span>met_1bp_out)
+<span class="kw">unique</span>(met<span class="op">$</span>anno) <span class="co">## all annotations</span>
+<span class="co">## look at sample names</span>
+<span class="kw">head</span>(<span class="kw">unique</span>(met<span class="op">$</span>sample), <span class="dv">2</span>)
+<span class="co">## keep only the well number as the sample name</span>
+<span class="co">## the following code is fast but only works if the well names are 2 character long and at the beginning on the string</span>
+<span class="co">## if wells such as A12 are present (with 3 or more characters) the function name.cells.by.wells should be called</span>
+met<span class="op">$</span>sample =<span class="st"> </span><span class="kw">substr</span>(met<span class="op">$</span>sample,<span class="dv">0</span>,<span class="dv">2</span>)
+<span class="kw">length</span>(<span class="kw">unique</span>(met<span class="op">$</span>sample)) <span class="co">## 40</span>
+met =met[anno<span class="op">!=</span><span class="st">&quot;intergenic&quot;</span>] <span class="co">## #TODO drop intergenic for now</span></code></pre>
 </div>
-<div id="hvgs-in-methylation-data" class="section level3">
-<h3><span class="header-section-number">2.1.2</span> HVGs in Methylation Data</h3>
-<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb50-1" data-line-number="1"><span class="kw">source</span>(<span class="st">&#39;utils/calc.cv.R&#39;</span>)</a>
-<a class="sourceLine" id="cb50-2" data-line-number="2">n.met.hvgs =<span class="st"> </span><span class="dv">500</span></a>
-<a class="sourceLine" id="cb50-3" data-line-number="3">genebody.exp.smry =<span class="st"> </span><span class="kw">calc.cv</span>(<span class="kw">counts</span>(met.gene.sce.filt_NAs), <span class="dt">mean.expr.cutoff =</span> <span class="dv">0</span>, <span class="dt">n.hvgs =</span> n.met.hvgs, <span class="dt">mean.quant =</span> <span class="dv">0</span>, <span class="dt">type =</span> <span class="st">&#39;Genebody Methylation Rate&#39;</span>)</a>
-<a class="sourceLine" id="cb50-4" data-line-number="4">genebody.exp.smry<span class="op">$</span>plot.cv</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-14-1.png" width="672" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb51-1" data-line-number="1">met.hvgs.gene =<span class="st"> </span><span class="kw">rownames</span>(genebody.exp.smry<span class="op">$</span>expr.smry)[<span class="dv">1</span><span class="op">:</span>n.met.hvgs]</a>
-<a class="sourceLine" id="cb51-2" data-line-number="2"></a>
-<a class="sourceLine" id="cb51-3" data-line-number="3">prom.exp.smry =<span class="st"> </span><span class="kw">calc.cv</span>(<span class="kw">counts</span>(met.prom.sce.filt_NAs), <span class="dt">mean.expr.cutoff =</span> <span class="dv">0</span>, <span class="dt">n.hvgs =</span> n.met.hvgs, <span class="dt">mean.quant =</span> <span class="dv">0</span>, <span class="dt">type =</span> <span class="st">&#39;Promoter Methylation Rate&#39;</span>)</a>
-<a class="sourceLine" id="cb51-4" data-line-number="4">prom.exp.smry<span class="op">$</span>plot.cv</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-14-2.png" width="672" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb52-1" data-line-number="1">met.hvgs.prom =<span class="st"> </span><span class="kw">rownames</span>(prom.exp.smry<span class="op">$</span>expr.smry)[<span class="dv">1</span><span class="op">:</span>n.met.hvgs]</a>
-<a class="sourceLine" id="cb52-2" data-line-number="2"><span class="co">## HVGs for genebody</span></a>
-<a class="sourceLine" id="cb52-3" data-line-number="3">met.gene.sce.filt_NAs.hvg =<span class="st"> </span>met.gene.sce.filt_NAs[met.hvgs.gene,]</a>
-<a class="sourceLine" id="cb52-4" data-line-number="4"></a>
-<a class="sourceLine" id="cb52-5" data-line-number="5"><span class="co">## HVGs for promoters</span></a>
-<a class="sourceLine" id="cb52-6" data-line-number="6">met.prom.sce.filt_NAs.hvg =<span class="st"> </span>met.prom.sce.filt_NAs[met.hvgs.prom,]</a></code></pre></div>
+<div id="create-sce" class="section level2">
+<h2><span class="header-section-number">2.2</span> Create sce</h2>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## from each annotation (genebody, promoter etc) in methylation file, create a sce object</span>
+<span class="co">## which includes the weighted mean methylation rate (rbar) and weighted methylation variance (vhat)</span>
+<span class="co">## plus the coverage of the gene in rowData(sce), filter by coverage and record the changes in dim(sce)</span>
+<span class="co">## after filtering in metadata(sce)</span>
+
+<span class="kw">system.time</span>({ <span class="co">## 19 sec</span>
+  <span class="cf">for</span> (i <span class="cf">in</span> <span class="kw">unique</span>(met<span class="op">$</span>anno) ) {
+    <span class="kw">assign</span>(<span class="kw">paste0</span>(<span class="st">&quot;sce_&quot;</span>,i), <span class="kw">met_sce</span>(<span class="dt">met=</span>met, <span class="dt">annot =</span> i, <span class="dt">cov =</span> params<span class="op">$</span>cov.cutoff))
+  }
+})</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&#39;RData/met_sces.RData&#39;</span>)</code></pre>
+</div>
+<div id="summary" class="section level2">
+<h2><span class="header-section-number">2.3</span> Summary</h2>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## get all annotations</span>
+annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;sce_&quot;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
+<span class="co">## tabulate metadata</span>
+<span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">metadata</span>(<span class="kw">get</span>(x))<span class="op">$</span>gene_stats}) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">lapply</span>(., cbind) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>() <span class="op">%&gt;%</span><span class="st"> </span>kableExtra<span class="op">::</span><span class="kw">kable</span>(., <span class="dt">caption =</span> <span class="st">&quot;Number of genes in each dataset before and after filtering by coverage&quot;</span>)</code></pre>
+</div>
+<div id="variance" class="section level2">
+<h2><span class="header-section-number">2.4</span> Variance</h2>
+<pre class="sourceCode r"><code class="sourceCode r">rv_plot =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce =</span> sce_genebody, <span class="dt">annot =</span> <span class="st">&quot;Gene Body Methylation&quot;</span>){
+  rowdat =<span class="st"> </span>sce <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">rowData</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>()
+  <span class="kw">ggplot</span>(rowdat, <span class="kw">aes</span>(<span class="dt">x=</span>rbar, <span class="dt">y=</span>vhat, <span class="dt">col =</span> cov)) <span class="op">+</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">geom_point</span>() <span class="op">+</span><span class="st"> </span><span class="kw">guides</span>(<span class="dt">col=</span><span class="kw">guide_legend</span>(<span class="st">&quot;Coverage&quot;</span>)) <span class="op">+</span>
+<span class="st">    </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="kw">TeX</span>(<span class="st">&quot;$</span><span class="ch">\\</span><span class="st">bar{r}$&quot;</span>), <span class="dt">y=</span><span class="kw">TeX</span>(<span class="st">&quot;$</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&quot;</span>),<span class="dt">title =</span> annot)
+}</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## plot all vhat ~ rbar</span>
+<span class="kw">par</span>(<span class="dt">mfrow=</span><span class="kw">c</span>(<span class="kw">ceiling</span>(<span class="kw">length</span>(annots)<span class="op">/</span><span class="dv">2</span>),<span class="dv">2</span>))
+<span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">rv_plot</span>(<span class="kw">get</span>(x), x)})</code></pre>
+<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-4.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<div id="dimension-reduction" class="section level2">
+<h2><span class="header-section-number">2.5</span> Dimension reduction</h2>
+<p>Because of large number of NA’s, dimension reduction cannot be trusted for now.</p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## pca function</span>
+<span class="co">## sce: sce with &#39;rates&#39; assay</span>
+<span class="co">## ncomp: integer, number of comps to get</span>
+<span class="co">## hvgs: NULL or number of hvgs to keep based on rowData(sce)$vhat</span>
+pca_met =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce =</span> <span class="st">&quot;sce_genebody&quot;</span>, <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">n_hvgs =</span> <span class="ot">NULL</span>){
+  rates =<span class="st"> </span><span class="kw">assay</span>(<span class="kw">get</span>(sce), <span class="st">&quot;rates&quot;</span>)
+  <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(n_hvgs)){
+    <span class="cf">if</span>(n_hvgs<span class="op">&gt;=</span><span class="kw">dim</span>(<span class="kw">get</span>(sce))[<span class="dv">1</span>]){
+      <span class="kw">message</span>(<span class="st">&quot;number of genes &lt;= hvgs; all genes used&quot;</span>)
+    } <span class="cf">else</span>{
+      rates =<span class="st"> </span>rates[<span class="dv">1</span><span class="op">:</span>n_hvgs,]
+    }
+  }
+  out =<span class="st"> </span><span class="kw">pca</span>(<span class="kw">t</span>(rates), <span class="dt">ncomp =</span> ncomp)
+  out<span class="op">$</span>anno =<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;sce_&quot;</span>,<span class="st">&quot;&quot;</span>, sce)
+  <span class="kw">return</span>(out)
+}</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r">n_hvgs =<span class="st"> </span>params<span class="op">$</span>hvgs_pca
+<span class="co">## maximum number of components reaches for some comps</span>
+<span class="kw">system.time</span>({ <span class="co">## 562 sec for ncomp=3, nhvgs =2000</span>
+  pca_out =<span class="st"> </span><span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">pca_met</span>(x,<span class="dt">ncomp =</span> <span class="dv">3</span>, <span class="dt">n_hvgs =</span>n_hvgs)})
+  <span class="kw">save</span>(pca_out, <span class="dt">file=</span><span class="st">&quot;RData/pca_out.RData&quot;</span>)
+})</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&quot;RData/pca_out.RData&quot;</span>)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lapply</span>(pca_out, <span class="cf">function</span>(x){<span class="kw">pca.grid</span>(x, <span class="dt">top =</span> x<span class="op">$</span>anno, <span class="dt">point.label =</span> <span class="ot">TRUE</span>)})</code></pre>
+<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-4.png" width="672" style="display: block; margin: auto;" />
+## Weighted PCA?</p>
 <!--
 impute using DeepCpG and plot the heatmaps:
 
@@ -291,175 +304,7 @@ plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs
             clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation')
 ```
 -->
-</div>
-<div id="spls---gene-body" class="section level3">
-<h3><span class="header-section-number">2.1.3</span> sPLS - Gene Body</h3>
-<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb53-1" data-line-number="1">spls.rna.gene  =<span class="st"> </span><span class="kw">spls</span>(<span class="dt">X=</span><span class="kw">t</span>(<span class="kw">counts</span>(met.gene.sce.filt_NAs.hvg )), <span class="dt">Y=</span><span class="kw">t</span>(<span class="kw">logcounts</span>(rna.sce)), <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">keepX =</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">keepY=</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">mode =</span> <span class="st">&quot;canonical&quot;</span>)</a></code></pre></div>
-<pre><code>## Warning in cor(A[[k]], variates.A[[k]]): the standard deviation is zero</code></pre>
-<div class="sourceCode" id="cb55"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb55-1" data-line-number="1"><span class="kw">plotVar</span>(spls.rna.gene, <span class="dt">legend=</span>T, <span class="dt">pch=</span><span class="kw">c</span>(<span class="dv">16</span>,<span class="dv">17</span>), <span class="dt">title =</span> <span class="st">&#39;Correlation Circle Plots - Transcriptome (Y) against gene body methylation (X) </span><span class="ch">\n</span><span class="st"> No NA filtering&#39;</span>, <span class="dt">col=</span> <span class="kw">color.mixo</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)))</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-17-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>A negative correlation between RNAseq and Methylation data is apparent, while the opoposite is also true at for some latent variables.</p>
-</div>
-<div id="spls---promoter" class="section level3">
-<h3><span class="header-section-number">2.1.4</span> sPLS - Promoter</h3>
-<div class="sourceCode" id="cb56"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb56-1" data-line-number="1">spls.rna.prom =<span class="st"> </span><span class="kw">spls</span>(<span class="dt">X=</span><span class="kw">t</span>(<span class="kw">counts</span>(met.prom.sce.filt_NAs.hvg )), <span class="dt">Y=</span><span class="kw">t</span>(<span class="kw">logcounts</span>(rna.sce)), <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">keepX =</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">keepY=</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">mode =</span> <span class="st">&quot;canonical&quot;</span>)</a></code></pre></div>
-<pre><code>## Warning in cor(A[[k]], variates.A[[k]]): the standard deviation is zero</code></pre>
-<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb58-1" data-line-number="1"><span class="kw">plotVar</span>(spls.rna.prom, <span class="dt">legend=</span>T, <span class="dt">pch=</span><span class="kw">c</span>(<span class="dv">20</span>,<span class="dv">17</span>), <span class="dt">title =</span> <span class="st">&#39;Correlation Circle Plots - Transcriptome (Y) against gene promoter methylation (X) </span><span class="ch">\n</span><span class="st"> No NA filtering&#39;</span>, <span class="dt">col=</span> <span class="kw">color.mixo</span>(<span class="kw">c</span>(<span class="dv">4</span>,<span class="dv">1</span>)))</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-19-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>There are a lot more <em>NaN</em>s in promoter data than in gene body, which is why there are some data points outside the circles.</p>
-</div>
-<div id="block-spls" class="section level3">
-<h3><span class="header-section-number">2.1.5</span> Block sPLS</h3>
-<div class="sourceCode" id="cb59"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb59-1" data-line-number="1"><span class="co">## transcriptome (Y) against gene body and promoter methylation data (X)</span></a>
-<a class="sourceLine" id="cb59-2" data-line-number="2">block.spls  =<span class="st"> </span><span class="kw">block.spls</span>(<span class="dt">X =</span> <span class="kw">list</span>(<span class="dt">gene.met =</span> <span class="kw">t</span>(<span class="kw">counts</span>(met.prom.sce.filt_NAs.hvg)),<span class="dt">prom.met =</span> <span class="kw">t</span>(<span class="kw">counts</span>(met.gene.sce.filt_NAs.hvg))), <span class="dt">Y =</span> <span class="kw">t</span>(<span class="kw">logcounts</span>(rna.sce)), <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">keepX =</span> <span class="kw">list</span>(<span class="dt">gene.met =</span><span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">50</span>), <span class="dt">prom.met =</span><span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">50</span>)), <span class="dt">keepY=</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">mode =</span> <span class="st">&quot;canonical&quot;</span>)</a></code></pre></div>
-<pre><code>## Warning in cor(A[[k]], variates.A[[k]]): the standard deviation is zero</code></pre>
-<div class="sourceCode" id="cb61"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb61-1" data-line-number="1"><span class="kw">plotVar</span>(block.spls, <span class="dt">legend =</span> T, <span class="dt">title =</span> <span class="st">&#39;Correlation Circle Plots - Transcriptome against Methylation&#39;</span>, <span class="dt">pch =</span> <span class="kw">c</span>(<span class="dv">16</span>,<span class="dv">20</span>,<span class="dv">17</span>), <span class="dt">col=</span> <span class="kw">color.mixo</span>(<span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>,<span class="dv">1</span>)))</a></code></pre></div>
-<pre><code>## Warning in cor(object$blocks[[x]], object$variates[[x]][, c(comp1,
-## comp2)], : the standard deviation is zero</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-21-1.png" width="672" style="display: block; margin: auto;" /></p>
-</div>
-</div>
-<div id="kb-windows" class="section level2">
-<h2><span class="header-section-number">2.2</span> 3kb Windows</h2>
-<!--
-Add the option to re-summarise the methylation data here:
-if(!io$use.parsed){
 
-} else {
-
-}
--->
-<div class="sourceCode" id="cb63"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb63-1" data-line-number="1"><span class="kw">system.time</span>({</a>
-<a class="sourceLine" id="cb63-2" data-line-number="2"> <span class="co">##   user  system elapsed </span></a>
-<a class="sourceLine" id="cb63-3" data-line-number="3"> <span class="co">## 18.916   5.696  36.746</span></a>
-<a class="sourceLine" id="cb63-4" data-line-number="4">window3kb =<span class="st"> </span><span class="kw">fread</span>(io<span class="op">$</span>met_3kb)</a>
-<a class="sourceLine" id="cb63-5" data-line-number="5">})</a></code></pre></div>
-<pre><code>##    user  system elapsed 
-##  25.226   8.459  22.281</code></pre>
-<div class="sourceCode" id="cb65"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb65-1" data-line-number="1"><span class="kw">system.time</span>({</a>
-<a class="sourceLine" id="cb65-2" data-line-number="2">          <span class="co">##  user  system elapsed </span></a>
-<a class="sourceLine" id="cb65-3" data-line-number="3">          <span class="co">## 4.073   2.501   7.482 </span></a>
-<a class="sourceLine" id="cb65-4" data-line-number="4"><span class="co">## create a &#39;bin&#39; variable</span></a>
-<a class="sourceLine" id="cb65-5" data-line-number="5"><span class="co">## using 1e5 bins made it too uniform, i.e. meth. rate ~0.75</span></a>
-<a class="sourceLine" id="cb65-6" data-line-number="6"><span class="co">## sticking with the 3kb window</span></a>
-<a class="sourceLine" id="cb65-7" data-line-number="7">bin.width  =<span class="fl">3e3</span></a>
-<a class="sourceLine" id="cb65-8" data-line-number="8"><span class="co">## I have not differentiated between forward and backward strand, to be checked with Heather</span></a>
-<a class="sourceLine" id="cb65-9" data-line-number="9"><span class="co">## [Al] also, some windows overlap - this should be considered later on (weighted ovrlapping)</span></a>
-<a class="sourceLine" id="cb65-10" data-line-number="10">window3kb[,bin<span class="op">:</span><span class="er">=</span><span class="kw">ceiling</span>(start<span class="op">/</span>bin.width)]</a>
-<a class="sourceLine" id="cb65-11" data-line-number="11"></a>
-<a class="sourceLine" id="cb65-12" data-line-number="12"><span class="co">## dropping all columns except for rates and bin</span></a>
-<a class="sourceLine" id="cb65-13" data-line-number="13">window3kb =<span class="st"> </span>window3kb[, <span class="kw">grepl</span>(<span class="st">&#39;rate&#39;</span>, <span class="kw">colnames</span>(window3kb))<span class="op">|</span></a>
-<a class="sourceLine" id="cb65-14" data-line-number="14"><span class="st">                        </span><span class="kw">grepl</span>(<span class="st">&#39;bin&#39;</span>, <span class="kw">colnames</span>(window3kb)), with=F]</a>
-<a class="sourceLine" id="cb65-15" data-line-number="15"><span class="co">## remove every column name that matches &#39;var&#39; - rate variance data</span></a>
-<a class="sourceLine" id="cb65-16" data-line-number="16">window3kb =<span class="st"> </span>window3kb[,<span class="op">!</span><span class="kw">grepl</span>(<span class="st">&#39;var&#39;</span>, <span class="kw">colnames</span>(window3kb)), with=F]</a>
-<a class="sourceLine" id="cb65-17" data-line-number="17"><span class="kw">dim</span>(window3kb) <span class="co"># 1923673      41</span></a>
-<a class="sourceLine" id="cb65-18" data-line-number="18"><span class="kw">source</span>(<span class="st">&#39;utils/name.cells.by.wells.R&#39;</span>)</a>
-<a class="sourceLine" id="cb65-19" data-line-number="19"><span class="kw">colnames</span>(window3kb) =<span class="st"> </span><span class="kw">name.cells.by.wells</span>(<span class="kw">colnames</span>(window3kb), <span class="dt">pos.in.string =</span> <span class="st">&#39;first&#39;</span>)</a>
-<a class="sourceLine" id="cb65-20" data-line-number="20"><span class="co">## create a &#39;weight&#39; variable for the number of observations in each bin</span></a>
-<a class="sourceLine" id="cb65-21" data-line-number="21"><span class="co">## [Al] although, what also matters is the number of times each cell has been covered in total</span></a>
-<a class="sourceLine" id="cb65-22" data-line-number="22">window3kb =<span class="st"> </span>window3kb[,weight<span class="op">:</span><span class="er">=</span>.N, by =<span class="st"> </span>bin]</a>
-<a class="sourceLine" id="cb65-23" data-line-number="23"> <span class="co">#   user  system elapsed </span></a>
-<a class="sourceLine" id="cb65-24" data-line-number="24"> <span class="co"># 22.470  15.497  54.818 </span></a>
-<a class="sourceLine" id="cb65-25" data-line-number="25"></a>
-<a class="sourceLine" id="cb65-26" data-line-number="26"><span class="co">## average over bins and disregard NAs- weights will remain the same so not excluded</span></a>
-<a class="sourceLine" id="cb65-27" data-line-number="27"><span class="co">## bins with no observation for a given cell will return NaNs</span></a>
-<a class="sourceLine" id="cb65-28" data-line-number="28">window3kb =<span class="st"> </span>window3kb[,<span class="kw">lapply</span>(.SD,mean, <span class="dt">na.rm=</span><span class="ot">TRUE</span>), by=bin]</a>
-<a class="sourceLine" id="cb65-29" data-line-number="29"><span class="kw">dim</span>(window3kb) <span class="co">## 82981    42</span></a>
-<a class="sourceLine" id="cb65-30" data-line-number="30">window3kb<span class="op">$</span>n.NAs =<span class="st"> </span><span class="kw">rowSums</span>(<span class="kw">is.na</span>(window3kb))</a>
-<a class="sourceLine" id="cb65-31" data-line-number="31"><span class="kw">hist</span>(window3kb<span class="op">$</span>n.NAs, <span class="dt">main=</span><span class="st">&#39;histogram of number of NAs in all 3kb windows&#39;</span>)</a>
-<a class="sourceLine" id="cb65-32" data-line-number="32"><span class="co">## filter out NAs</span></a>
-<a class="sourceLine" id="cb65-33" data-line-number="33">window3kb =<span class="st"> </span>window3kb[n.NAs<span class="op">&lt;=</span><span class="dv">20</span>] <span class="co">## arbitrary</span></a>
-<a class="sourceLine" id="cb65-34" data-line-number="34"><span class="kw">dim</span>(window3kb) <span class="co">## 74171    43</span></a>
-<a class="sourceLine" id="cb65-35" data-line-number="35">})</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-22-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre><code>##    user  system elapsed 
-##   2.507   4.282   8.657</code></pre>
-<div class="sourceCode" id="cb67"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb67-1" data-line-number="1"><span class="co">## plot a given cell&#39;s weight</span></a>
-<a class="sourceLine" id="cb67-2" data-line-number="2"><span class="kw">plot</span>(window3kb<span class="op">$</span>weight, <span class="kw">as.matrix</span>(window3kb[,<span class="dv">9</span>]), <span class="dt">xlim =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">250</span>), <span class="dt">main=</span> <span class="st">&#39;methylation rate at each window for a </span><span class="ch">\n</span><span class="st"> given cell vs the window coverage&#39;</span>)</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-22-2.png" width="672" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb68"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb68-1" data-line-number="1"><span class="co">## part of variation in methylation is due to dropouts, i.e. low weight</span></a>
-<a class="sourceLine" id="cb68-2" data-line-number="2"></a>
-<a class="sourceLine" id="cb68-3" data-line-number="3"><span class="co">## plot the boxplot of weights</span></a>
-<a class="sourceLine" id="cb68-4" data-line-number="4"><span class="kw">boxplot</span>(window3kb<span class="op">$</span>weight, <span class="dt">horizontal=</span>T)</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-22-3.png" width="672" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb69"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb69-1" data-line-number="1"><span class="co">## filtering by weight</span></a>
-<a class="sourceLine" id="cb69-2" data-line-number="2"><span class="co">## require each window to be covered at least x times</span></a>
-<a class="sourceLine" id="cb69-3" data-line-number="3">min.weight =<span class="st"> </span><span class="dv">20</span> <span class="co">## arbitrary</span></a>
-<a class="sourceLine" id="cb69-4" data-line-number="4">window3kb =<span class="st"> </span>window3kb[weight <span class="op">&gt;</span><span class="st"> </span>min.weight]</a>
-<a class="sourceLine" id="cb69-5" data-line-number="5"><span class="kw">dim</span>(window3kb) <span class="co">##  35431    43  - for min.weight = median</span></a></code></pre></div>
-<pre><code>## [1] 44564    43</code></pre>
-<div class="sourceCode" id="cb71"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb71-1" data-line-number="1"><span class="kw">system.time</span>({</a>
-<a class="sourceLine" id="cb71-2" data-line-number="2">    <span class="co">##  user  system elapsed </span></a>
-<a class="sourceLine" id="cb71-3" data-line-number="3">    <span class="co">## 24.462   0.207  24.994</span></a>
-<a class="sourceLine" id="cb71-4" data-line-number="4"><span class="co"># ## add mean meth. rate for each bin:</span></a>
-<a class="sourceLine" id="cb71-5" data-line-number="5">window3kb[,mean<span class="op">:</span><span class="er">=</span><span class="kw">apply</span>(.SD,<span class="dv">1</span>, mean, <span class="dt">na.rm=</span><span class="ot">TRUE</span> ) , by=bin, .SDcols=<span class="kw">c</span>(<span class="dv">2</span><span class="op">:</span><span class="dv">41</span>)]</a>
-<a class="sourceLine" id="cb71-6" data-line-number="6"><span class="co">## checking whether there are near zero means for calculating cv</span></a>
-<a class="sourceLine" id="cb71-7" data-line-number="7"><span class="kw">hist</span>(window3kb<span class="op">$</span>mean, <span class="dt">main=</span><span class="st">&#39;mean methylation rate for all cells - 3kb windows&#39;</span>)</a>
-<a class="sourceLine" id="cb71-8" data-line-number="8"><span class="kw">min</span>(window3kb<span class="op">$</span>mean)<span class="co">## 0.5275498</span></a>
-<a class="sourceLine" id="cb71-9" data-line-number="9"><span class="co">## so we&#39;ll calculate cv with no pseudo value at denominator</span></a>
-<a class="sourceLine" id="cb71-10" data-line-number="10">window3kb[,sd<span class="op">:</span><span class="er">=</span><span class="kw">apply</span>(.SD,<span class="dv">1</span>, sd, <span class="dt">na.rm=</span><span class="ot">TRUE</span>) , by=bin,.SDcols=<span class="kw">c</span>(<span class="dv">2</span><span class="op">:</span><span class="dv">41</span>)]</a>
-<a class="sourceLine" id="cb71-11" data-line-number="11">window3kb[,cv<span class="op">:</span><span class="er">=</span>sd<span class="op">/</span>mean]</a>
-<a class="sourceLine" id="cb71-12" data-line-number="12"><span class="kw">hist</span>(window3kb<span class="op">$</span>cv)</a>
-<a class="sourceLine" id="cb71-13" data-line-number="13"><span class="co">## order by cv for highly varibale regions</span></a>
-<a class="sourceLine" id="cb71-14" data-line-number="14">window3kb=window3kb[<span class="kw">order</span>(<span class="op">-</span>cv)]</a>
-<a class="sourceLine" id="cb71-15" data-line-number="15"><span class="co">## keep the top variable windows</span></a>
-<a class="sourceLine" id="cb71-16" data-line-number="16">n.region =<span class="st"> </span><span class="dv">5000</span></a>
-<a class="sourceLine" id="cb71-17" data-line-number="17">window3kb.hvw=window3kb[<span class="dv">1</span><span class="op">:</span>n.region]</a>
-<a class="sourceLine" id="cb71-18" data-line-number="18"><span class="co">## create SCE</span></a>
-<a class="sourceLine" id="cb71-19" data-line-number="19">hvw.sce =<span class="st"> </span><span class="kw">SingleCellExperiment</span>(<span class="dt">assays =</span> <span class="kw">list</span>(<span class="dt">counts =</span> <span class="kw">as.matrix</span>(window3kb.hvw[,<span class="kw">c</span>(<span class="dv">2</span><span class="op">:</span><span class="dv">41</span>)])))</a>
-<a class="sourceLine" id="cb71-20" data-line-number="20">})</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-23-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-23-2.png" width="672" style="display: block; margin: auto;" /></p>
-<pre><code>##    user  system elapsed 
-##  29.260   0.552  28.912</code></pre>
-<div id="dimension-reduction-1" class="section level3">
-<h3><span class="header-section-number">2.2.1</span> Dimension Reduction</h3>
-<div class="sourceCode" id="cb73"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb73-1" data-line-number="1"><span class="kw">system.time</span>({</a>
-<a class="sourceLine" id="cb73-2" data-line-number="2">     <span class="co">## user  system elapsed </span></a>
-<a class="sourceLine" id="cb73-3" data-line-number="3">    <span class="co">## 253.382  31.798 286.293 </span></a>
-<a class="sourceLine" id="cb73-4" data-line-number="4"><span class="co"># pca.met.window = pca(t(counts(hvw.sce)), ncomp = 3)</span></a>
-<a class="sourceLine" id="cb73-5" data-line-number="5"><span class="co"># save(pca.met.window, file= file.path(io$RData,&#39;pca.met.window.RData&#39;))</span></a>
-<a class="sourceLine" id="cb73-6" data-line-number="6"><span class="kw">load</span>(<span class="kw">file.path</span>(io<span class="op">$</span>RData,<span class="st">&#39;pca.met.window.RData&#39;</span>))</a>
-<a class="sourceLine" id="cb73-7" data-line-number="7">})</a></code></pre></div>
-<pre><code>##    user  system elapsed 
-##   0.022   0.003   0.029</code></pre>
-<div class="sourceCode" id="cb75"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb75-1" data-line-number="1"><span class="co">## outliers exist:</span></a>
-<a class="sourceLine" id="cb75-2" data-line-number="2"><span class="kw">source</span>(<span class="st">&#39;utils/plot.pca.R&#39;</span>)</a>
-<a class="sourceLine" id="cb75-3" data-line-number="3"><span class="kw">plot.pca</span>(<span class="dt">gg.pca =</span> gg.pca, <span class="dt">pca.obj =</span> pca.met.window, <span class="dt">top =</span> <span class="st">&#39;PCA - methylation in variable 3kb windows&#39;</span>)</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-24-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre><code>## TableGrob (3 x 2) &quot;arrange&quot;: 5 grobs
-##   z     cells    name                 grob
-## 1 1 (2-2,1-1) arrange       gtable[layout]
-## 2 2 (2-2,2-2) arrange       gtable[layout]
-## 3 3 (3-3,1-1) arrange       gtable[layout]
-## 4 4 (3-3,2-2) arrange       gtable[layout]
-## 5 5 (1-1,1-2) arrange text[GRID.text.1062]</code></pre>
-<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb77-1" data-line-number="1"><span class="co">## find outliers</span></a>
-<a class="sourceLine" id="cb77-2" data-line-number="2">variates =<span class="kw">as.data.frame</span>(pca.met.window<span class="op">$</span>variates<span class="op">$</span>X)</a>
-<a class="sourceLine" id="cb77-3" data-line-number="3">variates.ordered =<span class="st"> </span>variates[<span class="kw">order</span>((<span class="kw">abs</span>(variates<span class="op">$</span>PC1)<span class="op">+</span><span class="kw">abs</span>(variates<span class="op">$</span>PC2)<span class="op">+</span><span class="kw">abs</span>(variates<span class="op">$</span>PC3)), <span class="dt">decreasing =</span> T),]</a>
-<a class="sourceLine" id="cb77-4" data-line-number="4"></a>
-<a class="sourceLine" id="cb77-5" data-line-number="5"><span class="co">## plot labeled pca to find outliers</span></a>
-<a class="sourceLine" id="cb77-6" data-line-number="6"><span class="kw">ggplot</span>(variates.ordered, <span class="kw">aes</span>(<span class="dt">x =</span> PC1, <span class="dt">y =</span> PC2)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb77-7" data-line-number="7"><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">col=</span><span class="kw">color.mixo</span>(<span class="dv">1</span>)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb77-8" data-line-number="8"><span class="st">  </span><span class="kw">geom_label_repel</span>(</a>
-<a class="sourceLine" id="cb77-9" data-line-number="9">    <span class="kw">aes</span>(<span class="dt">label =</span> <span class="kw">ifelse</span>(<span class="kw">rank</span>(PC1)<span class="op">&lt;</span><span class="dv">10</span>,<span class="kw">rownames</span>(variates),<span class="st">&#39;&#39;</span>)),</a>
-<a class="sourceLine" id="cb77-10" data-line-number="10">    <span class="dt">col =</span> <span class="st">&#39;darkorange&#39;</span>,</a>
-<a class="sourceLine" id="cb77-11" data-line-number="11">    <span class="dt">fontface =</span> <span class="st">&#39;bold&#39;</span>,</a>
-<a class="sourceLine" id="cb77-12" data-line-number="12">    <span class="dt">box.padding =</span> <span class="kw">unit</span>(<span class="fl">0.35</span>, <span class="st">&quot;lines&quot;</span>),</a>
-<a class="sourceLine" id="cb77-13" data-line-number="13">    <span class="dt">point.padding =</span> <span class="kw">unit</span>(<span class="fl">0.5</span>, <span class="st">&quot;lines&quot;</span>),</a>
-<a class="sourceLine" id="cb77-14" data-line-number="14">    <span class="dt">segment.color =</span> <span class="st">&#39;grey50&#39;</span></a>
-<a class="sourceLine" id="cb77-15" data-line-number="15">  )</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-24-2.png" width="672" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" data-line-number="1"><span class="co">## if filtering necessary</span></a>
-<a class="sourceLine" id="cb78-2" data-line-number="2"><span class="co"># outlier.cells = c(&#39;A7&#39;,&#39;A5&#39;,&#39;A6&#39;, &#39;A8&#39;, &#39;A9&#39;)</span></a>
-<a class="sourceLine" id="cb78-3" data-line-number="3"><span class="co">## Were the A row&#39;s conditions different? </span></a></code></pre></div>
-<div class="sourceCode" id="cb79"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb79-1" data-line-number="1">spls.rna.hvw  =<span class="st"> </span><span class="kw">spls</span>(<span class="dt">Y=</span><span class="kw">t</span>(<span class="kw">logcounts</span>(rna.sce)), <span class="dt">X=</span><span class="kw">t</span>(<span class="kw">counts</span>(hvw.sce)), <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">keepX =</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">keepY=</span> <span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">mode =</span> <span class="st">&quot;canonical&quot;</span>)</a></code></pre></div>
-<pre><code>## Warning in cor(A[[k]], variates.A[[k]]): the standard deviation is zero</code></pre>
-<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb81-1" data-line-number="1"><span class="co">## the data points for methylation data represents an unbaised bin</span></a>
-<a class="sourceLine" id="cb81-2" data-line-number="2"><span class="kw">plotVar</span>(spls.rna.hvw, <span class="dt">legend =</span> T, <span class="dt">title =</span> <span class="kw">paste0</span>(<span class="st">&#39;Correlation Circle Plots - Transcriptome (Y) against Methylation </span><span class="ch">\n</span><span class="st"> of the unbiased &#39;</span>,<span class="kw">as.integer</span>(bin.width<span class="op">/</span><span class="dv">1000</span>),<span class="st">&#39; kb windows (X)&#39;</span>), <span class="dt">pch=</span> <span class="kw">c</span>(<span class="dv">16</span>,<span class="dv">17</span>), <span class="dt">col=</span> <span class="kw">color.mixo</span>(<span class="kw">c</span>(<span class="dv">5</span>,<span class="dv">1</span>)))</a></code></pre></div>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-26-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>Negative correlation between RNAseq and Methylation in 3kb window data.</p>
-
-</div>
 </div>
 </div>
             </section>
@@ -488,7 +333,7 @@ gitbook.start({
 "google": false,
 "linkedin": false,
 "weibo": false,
-"instapper": false,
+"instapaper": false,
 "vk": false,
 "all": ["facebook", "google", "twitter", "linkedin", "weibo", "instapaper"]
 },
@@ -498,6 +343,10 @@ gitbook.start({
 "size": 2
 },
 "edit": {
+"link": null,
+"text": null
+},
+"history": {
 "link": null,
 "text": null
 },
