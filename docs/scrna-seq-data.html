@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2019-02-07">
+<meta name="date" content="2019-02-11">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -187,11 +187,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </ul></li>
 <li class="chapter" data-level="3.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#canonical-correlation-study"><i class="fa fa-check"></i><b>3.2</b> Canonical correlation study</a><ul>
 <li class="chapter" data-level="3.2.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#trascriptome---promoter-methylome"><i class="fa fa-check"></i><b>3.2.1</b> Trascriptome - Promoter Methylome</a></li>
-<li class="chapter" data-level="3.2.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#run-using-highly-variable-genes"><i class="fa fa-check"></i><b>3.2.2</b> Run using highly variable genes</a></li>
-<li class="chapter" data-level="3.2.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#more-strict-filtering-by-coverage"><i class="fa fa-check"></i><b>3.2.3</b> More strict filtering by coverage</a></li>
 </ul></li>
-<li class="chapter" data-level="3.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#outlier-cells-diagnostics"><i class="fa fa-check"></i><b>3.3</b> Outlier cells diagnostics:</a></li>
-<li class="chapter" data-level="3.4" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#block-spls"><i class="fa fa-check"></i><b>3.4</b> Block sPLS</a></li>
 </ul></li>
 <li class="divider"></li>
 <li><a href="https://github.com/AJABADI/scMTseq-AML/" target="blank">See on GitHub</a></li>
@@ -220,8 +216,6 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(data.table))
 <span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(scran))
 <span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(scater))
-<span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(DESeq2))
-<span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(edgeR))
 <span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(Rtsne))
 <span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(ggplot2)); <span class="kw">theme_set</span>(<span class="kw">theme_bw</span>())
 <span class="kw">suppressPackageStartupMessages</span>(<span class="kw">library</span>(ggrepel))
@@ -261,10 +255,10 @@ rna.sce =<span class="st"> </span>scater<span class="op">::</span><span class="k
 <p>look at the histograms of library sizes and the number of genes expressed by each cell:</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## look at the histograms of lib. sizes and the number of genes expressed by each cell</span>
 <span class="kw">par</span>(<span class="dt">mfrow=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))
-<span class="kw">hist</span>(rna.sce<span class="op">$</span>total_counts<span class="op">/</span><span class="fl">1e6</span>, <span class="dt">xlab=</span><span class="st">&quot;Library sizes (millions)&quot;</span>, <span class="dt">main=</span><span class="st">&quot;&quot;</span>,
-    <span class="dt">breaks=</span><span class="dv">20</span>, <span class="dt">col=</span><span class="st">&quot;grey80&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;Number of cells&quot;</span>)
-<span class="kw">hist</span>(rna.sce<span class="op">$</span>total_features_by_counts, <span class="dt">xlab=</span><span class="st">&quot;Number of expressed genes&quot;</span>, <span class="dt">main=</span><span class="st">&quot;&quot;</span>,
-    <span class="dt">breaks=</span><span class="dv">20</span>, <span class="dt">col=</span><span class="st">&quot;grey80&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;Number of cells&quot;</span>)</code></pre>
+<span class="kw">hist</span>(rna.sce<span class="op">$</span>total_counts<span class="op">/</span><span class="fl">1e6</span>, <span class="dt">xlab=</span><span class="st">&#39;Library sizes (millions)&#39;</span>, <span class="dt">main=</span><span class="st">&#39;&#39;</span>,
+    <span class="dt">breaks=</span><span class="dv">20</span>, <span class="dt">col=</span><span class="st">&#39;grey80&#39;</span>, <span class="dt">ylab=</span><span class="st">&#39;Number of cells&#39;</span>)
+<span class="kw">hist</span>(rna.sce<span class="op">$</span>total_features_by_counts, <span class="dt">xlab=</span><span class="st">&#39;Number of expressed genes&#39;</span>, <span class="dt">main=</span><span class="st">&#39;&#39;</span>,
+    <span class="dt">breaks=</span><span class="dv">20</span>, <span class="dt">col=</span><span class="st">&#39;grey80&#39;</span>, <span class="dt">ylab=</span><span class="st">&#39;Number of cells&#39;</span>)</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
 <p>Create a list of cell QC metrics:</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## keep a record of lower limit cells</span>
@@ -285,9 +279,9 @@ genes.expressed.ratio2median =<span class="st"> </span>rna.sce<span class="op">$
 genes.expressed.ratio2median <span class="op">%&gt;%</span><span class="st"> </span>.[<span class="kw">order</span>(.)] <span class="co">## from least to most</span>
 cell.qc<span class="op">$</span>gene.expressed.ratio2median =<span class="st"> </span>genes.expressed.ratio2median</code></pre>
 <p>Which cells are more than 3.5 median absolute deviations less than the median log library size / number of genes expressed?:</p>
-<pre class="sourceCode r"><code class="sourceCode r">libsize.drop &lt;-<span class="st"> </span><span class="kw">isOutlier</span>(rna.sce<span class="op">$</span>total_counts, <span class="dt">nmads=</span><span class="fl">3.5</span>, <span class="dt">type=</span><span class="st">&quot;lower&quot;</span>, <span class="dt">log=</span><span class="ot">TRUE</span>)
+<pre class="sourceCode r"><code class="sourceCode r">libsize.drop &lt;-<span class="st"> </span><span class="kw">isOutlier</span>(rna.sce<span class="op">$</span>total_counts, <span class="dt">nmads=</span><span class="fl">3.5</span>, <span class="dt">type=</span><span class="st">&#39;lower&#39;</span>, <span class="dt">log=</span><span class="ot">TRUE</span>)
 <span class="kw">colnames</span>(rna.sce)[libsize.drop] <span class="co">## the cells with low library size</span>
-feature.drop &lt;-<span class="st"> </span><span class="kw">isOutlier</span>(rna.sce<span class="op">$</span>total_features_by_counts, <span class="dt">nmads=</span><span class="fl">3.5</span>, <span class="dt">type=</span><span class="st">&quot;lower&quot;</span>, <span class="dt">log=</span><span class="ot">TRUE</span>)
+feature.drop &lt;-<span class="st"> </span><span class="kw">isOutlier</span>(rna.sce<span class="op">$</span>total_features_by_counts, <span class="dt">nmads=</span><span class="fl">3.5</span>, <span class="dt">type=</span><span class="st">&#39;lower&#39;</span>, <span class="dt">log=</span><span class="ot">TRUE</span>)
 <span class="kw">colnames</span>(rna.sce)[feature.drop] <span class="co">## the cells with low number of expressed genes &gt; NULL</span></code></pre>
 <p>For each cell, we look at number of genes expressed vs library size (ratio to the median for both):</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## cells</span>
@@ -308,8 +302,8 @@ df4ggplot<span class="op">$</span>lower.quality =<span class="st"> </span><span 
     <span class="kw">aes</span>(<span class="dt">label =</span> <span class="kw">ifelse</span>(lower.quality,<span class="kw">rownames</span>(df4ggplot),<span class="st">&#39;&#39;</span>)),
     <span class="dt">col =</span> <span class="st">&#39;darkorange&#39;</span>,
     <span class="dt">fontface =</span> <span class="st">&#39;bold&#39;</span>,
-    <span class="dt">box.padding =</span> <span class="kw">unit</span>(<span class="fl">0.35</span>, <span class="st">&quot;lines&quot;</span>),
-    <span class="dt">point.padding =</span> <span class="kw">unit</span>(<span class="fl">0.5</span>, <span class="st">&quot;lines&quot;</span>),
+    <span class="dt">box.padding =</span> <span class="kw">unit</span>(<span class="fl">0.35</span>, <span class="st">&#39;lines&#39;</span>),
+    <span class="dt">point.padding =</span> <span class="kw">unit</span>(<span class="fl">0.5</span>, <span class="st">&#39;lines&#39;</span>),
     <span class="dt">segment.color =</span> <span class="st">&#39;grey50&#39;</span>
   )</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-11-1.png" width="672" style="display: block; margin: auto;" /></p>
@@ -332,7 +326,7 @@ log.mean.counts =<span class="st"> </span>gene.metrics<span class="op">$</span>l
 <span class="co">## see if you&#39;re filtering the first peak of non-zero values</span>
 hist =<span class="st"> </span><span class="kw">hist</span>(log.mean.counts[log.mean.counts<span class="op">&gt;</span><span class="dv">0</span>], <span class="dt">prob=</span><span class="ot">TRUE</span>, <span class="dt">breaks =</span> <span class="dv">100</span>, <span class="dt">col =</span> <span class="st">&#39;grey80&#39;</span>,
             <span class="dt">main=</span> <span class="st">&#39;Histogram of log10 mean gene counts / library sizes&#39;</span>, <span class="dt">xlab =</span> <span class="st">&#39;log10[mean counts] for each gene&#39;</span>)
-<span class="kw">abline</span>(<span class="dt">v =</span> min.libsize, <span class="dt">col =</span> <span class="st">&quot;darkorange&quot;</span>, <span class="dt">lwd=</span><span class="dv">2</span>)</code></pre>
+<span class="kw">abline</span>(<span class="dt">v =</span> min.libsize, <span class="dt">col =</span> <span class="st">&#39;darkorange&#39;</span>, <span class="dt">lwd=</span><span class="dv">2</span>)</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-13-1.png" width="672" style="display: block; margin: auto;" /></p>
 <p>Based on the histogam above, 0.60206 is chosen as minimum gene library size.</p>
 <!-- ```{r, eval=FALSE, echo=FALSE, purl = F} -->
@@ -372,8 +366,8 @@ rna_qc =<span class="st"> </span><span class="kw">normalize</span>(rna_qc)
 })</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## size factors summary</span>
 <span class="co"># summary(sizeFactors(rna_qc))</span>
-<span class="kw">plot</span>(<span class="kw">sizeFactors</span>(rna_qc), rna_qc<span class="op">$</span>total_counts<span class="op">/</span><span class="fl">1e3</span>, <span class="dt">log=</span><span class="st">&quot;xy&quot;</span>, <span class="dt">pch=</span><span class="dv">16</span>, <span class="dt">col=</span><span class="st">&#39;purple&#39;</span>,
-    <span class="dt">ylab=</span><span class="st">&quot;Library size (thousands)&quot;</span>, <span class="dt">xlab=</span><span class="st">&quot;Size factor&quot;</span>, <span class="dt">main =</span> <span class="st">&quot;Scran Size Factors&quot;</span>)</code></pre>
+<span class="kw">plot</span>(<span class="kw">sizeFactors</span>(rna_qc), rna_qc<span class="op">$</span>total_counts<span class="op">/</span><span class="fl">1e3</span>, <span class="dt">log=</span><span class="st">&#39;xy&#39;</span>, <span class="dt">pch=</span><span class="dv">16</span>, <span class="dt">col=</span><span class="st">&#39;purple&#39;</span>,
+    <span class="dt">ylab=</span><span class="st">&#39;Library size (thousands)&#39;</span>, <span class="dt">xlab=</span><span class="st">&#39;Size factor&#39;</span>, <span class="dt">main =</span> <span class="st">&#39;Scran Size Factors&#39;</span>)</code></pre>
 <div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-17"></span>
 <img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-17-1.png" alt="Size factors from deconvolution, plotted against library sizes for all cells. Axes are shown on a log-scale. Since we have similar cell types (and not much DE genes) we expect to see less scatter around the trend line, whcih is the case in this plot." width="672" />
 <p class="caption">
@@ -392,7 +386,7 @@ pca.res =<span class="st"> </span><span class="kw">pca</span>(<span class="kw">t
 <span class="kw">pca.grid</span>(<span class="dt">pca.obj =</span> pca.res, <span class="dt">diff.samples =</span> rnaseq.only)</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-19-1.png" width="100%" style="display: block; margin: auto;" /></p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## invesigating whether there are technical effects by wells:</span>
-<span class="kw">source</span>(<span class="st">&quot;utils/pca.well.R&quot;</span>)
+<span class="kw">source</span>(<span class="st">&#39;utils/pca.well.R&#39;</span>)
 <span class="kw">pca.well</span>(pca.res, <span class="dt">PCs=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-20-1.png" width="100%" style="display: block; margin: auto;" /></p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">pca.well</span>(pca.res, <span class="dt">PCs=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>))</code></pre>
@@ -415,7 +409,7 @@ pca.res =<span class="st"> </span><span class="kw">pca</span>(<span class="kw">t
 <h4><span class="header-section-number">1.4.2.3</span> decompose variance</h4>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## function to decompose variance for sce and return results as rowData(sce)</span>
 var.decomp =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce=</span>rna_qc){
-  fit &lt;-<span class="st"> </span><span class="kw">trendVar</span>(sce, <span class="dt">method=</span><span class="st">&quot;loess&quot;</span>, <span class="dt">use.spikes=</span><span class="ot">FALSE</span>)  <span class="co">## fit a mean-dependent loess to variance</span>
+  fit &lt;-<span class="st"> </span><span class="kw">trendVar</span>(sce, <span class="dt">method=</span><span class="st">&#39;loess&#39;</span>, <span class="dt">use.spikes=</span><span class="ot">FALSE</span>)  <span class="co">## fit a mean-dependent loess to variance</span>
   decomp &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">decomposeVar</span>(sce, fit)) <span class="co">## decompose variance to technical and biological</span>
   decomp<span class="op">$</span>trend.var &lt;-<span class="st"> </span>fit<span class="op">$</span><span class="kw">trend</span>(fit<span class="op">$</span>means) <span class="co">## add the fitted variance column</span>
   <span class="kw">rowData</span>(sce) <span class="op">%&lt;&gt;%</span><span class="st">  </span><span class="kw">cbind</span>(.,decomp) <span class="co">## add to rowData(sce)</span>
@@ -429,14 +423,14 @@ rna_qc <span class="op">%&lt;&gt;%</span><span class="st"> </span><span class="k
 row_data =<span class="st">  </span>rna_qc <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">rowData</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>() <span class="co">## a data.frame of rowData</span>
 <span class="co">## total variance (fold change compared to mean) vs log mean</span>
 <span class="kw">ggplot</span>(row_data) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>(<span class="kw">aes</span>(<span class="dt">x=</span> mean, <span class="dt">y=</span>total, <span class="dt">col =</span> FDR), <span class="dt">show.legend =</span> <span class="ot">TRUE</span>) <span class="op">+</span>
-<span class="st">  </span><span class="kw">scale_colour_gradientn</span>(<span class="dt">colors =</span> <span class="kw">c</span>(<span class="st">&quot;#027009&quot;</span>, <span class="st">&quot;#aebc31&quot;</span>), <span class="dt">name =</span> <span class="st">&quot;FDR&quot;</span>) <span class="op">+</span>
+<span class="st">  </span><span class="kw">scale_colour_gradientn</span>(<span class="dt">colors =</span> <span class="kw">c</span>(<span class="st">&#39;#027009&#39;</span>, <span class="st">&#39;#aebc31&#39;</span>), <span class="dt">name =</span> <span class="st">&#39;FDR&#39;</span>) <span class="op">+</span>
 <span class="st">  </span><span class="kw">geom_line</span>(<span class="kw">aes</span>(<span class="dt">x=</span>mean, <span class="dt">y =</span> trend.var, <span class="dt">fill =</span> <span class="st">&#39;Fitted trend&#39;</span>),  <span class="dt">size=</span><span class="dv">2</span>) <span class="op">+</span>
-<span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="st">&quot;&quot;</span>, <span class="dt">values =</span> <span class="kw">c</span>(<span class="dv">6</span>), <span class="dt">guide=</span><span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">color=</span><span class="kw">c</span>(<span class="st">&quot;black&quot;</span>)))) <span class="op">+</span>
+<span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="st">&#39;&#39;</span>, <span class="dt">values =</span> <span class="kw">c</span>(<span class="dv">6</span>), <span class="dt">guide=</span><span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">color=</span><span class="kw">c</span>(<span class="st">&#39;black&#39;</span>)))) <span class="op">+</span>
 <span class="st">  </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="st">&#39;mean log expression&#39;</span>, <span class="dt">y =</span> <span class="st">&#39;total variance&#39;</span>, <span class="dt">title =</span> <span class="st">&#39; total variance vs log mean expression for filtered genes&#39;</span>)</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-23-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## inferred biological variance (fold change compared to mean) vs log mean</span>
 <span class="kw">ggplot</span>(row_data) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>(<span class="kw">aes</span>(<span class="dt">x=</span> mean, <span class="dt">y=</span>bio, <span class="dt">col=</span>FDR), <span class="dt">show.legend =</span> <span class="ot">TRUE</span>) <span class="op">+</span>
-<span class="st">  </span><span class="kw">scale_colour_gradientn</span>(<span class="dt">colors =</span> <span class="kw">c</span>(<span class="st">&quot;#027009&quot;</span>, <span class="st">&quot;#aebc31&quot;</span>), <span class="dt">name =</span> <span class="st">&quot;FDR&quot;</span>) <span class="op">+</span>
+<span class="st">  </span><span class="kw">scale_colour_gradientn</span>(<span class="dt">colors =</span> <span class="kw">c</span>(<span class="st">&#39;#027009&#39;</span>, <span class="st">&#39;#aebc31&#39;</span>), <span class="dt">name =</span> <span class="st">&#39;FDR&#39;</span>) <span class="op">+</span>
 <span class="st">  </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="st">&#39;mean log expression&#39;</span>, <span class="dt">y =</span> <span class="st">&#39;biological variance&#39;</span>,
        <span class="dt">title =</span> <span class="st">&#39; biological variation vs log mean expression for filtered genes&#39;</span>)</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-23-2.png" width="672" style="display: block; margin: auto;" /></p>

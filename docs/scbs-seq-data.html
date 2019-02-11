@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2019-02-07">
+<meta name="date" content="2019-02-11">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -187,11 +187,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </ul></li>
 <li class="chapter" data-level="3.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#canonical-correlation-study"><i class="fa fa-check"></i><b>3.2</b> Canonical correlation study</a><ul>
 <li class="chapter" data-level="3.2.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#trascriptome---promoter-methylome"><i class="fa fa-check"></i><b>3.2.1</b> Trascriptome - Promoter Methylome</a></li>
-<li class="chapter" data-level="3.2.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#run-using-highly-variable-genes"><i class="fa fa-check"></i><b>3.2.2</b> Run using highly variable genes</a></li>
-<li class="chapter" data-level="3.2.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#more-strict-filtering-by-coverage"><i class="fa fa-check"></i><b>3.2.3</b> More strict filtering by coverage</a></li>
 </ul></li>
-<li class="chapter" data-level="3.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#outlier-cells-diagnostics"><i class="fa fa-check"></i><b>3.3</b> Outlier cells diagnostics:</a></li>
-<li class="chapter" data-level="3.4" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#block-spls"><i class="fa fa-check"></i><b>3.4</b> Block sPLS</a></li>
 </ul></li>
 <li class="divider"></li>
 <li><a href="https://github.com/AJABADI/scMTseq-AML/" target="blank">See on GitHub</a></li>
@@ -227,7 +223,7 @@ met =<span class="st"> </span><span class="kw">fread</span>(io<span class="op">$
 <span class="co">## if wells such as A12 are present (with 3 or more characters) the function name.cells.by.wells should be called</span>
 met<span class="op">$</span>sample =<span class="st"> </span><span class="kw">substr</span>(met<span class="op">$</span>sample,<span class="dv">0</span>,<span class="dv">2</span>)
 <span class="kw">length</span>(<span class="kw">unique</span>(met<span class="op">$</span>sample)) <span class="co">## 40</span>
-met =met[anno<span class="op">!=</span><span class="st">&quot;intergenic&quot;</span>] <span class="co">## #TODO drop intergenic for now</span></code></pre>
+met =met[anno<span class="op">!=</span><span class="st">&#39;intergenic&#39;</span>] <span class="co">## #TODO drop intergenic for now</span></code></pre>
 </div>
 <div id="create-sce" class="section level2">
 <h2><span class="header-section-number">2.2</span> Create sce</h2>
@@ -238,26 +234,26 @@ met =met[anno<span class="op">!=</span><span class="st">&quot;intergenic&quot;</
 
 <span class="kw">system.time</span>({ <span class="co">## 19 sec</span>
   <span class="cf">for</span> (i <span class="cf">in</span> <span class="kw">unique</span>(met<span class="op">$</span>anno) ) {
-    <span class="kw">assign</span>(<span class="kw">paste0</span>(<span class="st">&quot;sce_&quot;</span>,i), <span class="kw">met_sce</span>(<span class="dt">met=</span>met, <span class="dt">annot =</span> i, <span class="dt">cov =</span> params<span class="op">$</span>cov.cutoff))
+    <span class="kw">assign</span>(<span class="kw">paste0</span>(<span class="st">&#39;sce_&#39;</span>,i), <span class="kw">met_sce</span>(<span class="dt">met=</span>met, <span class="dt">annot =</span> i, <span class="dt">cov =</span> params<span class="op">$</span>cov.cutoff))
   }
 })</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&#39;RData/met_sces.RData&#39;</span>)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;met_sces.RData&#39;</span>))</code></pre>
 </div>
 <div id="summary" class="section level2">
 <h2><span class="header-section-number">2.3</span> Summary</h2>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## get all annotations</span>
-annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;sce_&quot;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
+annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&#39;sce_&#39;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
 <span class="co">## tabulate metadata</span>
 <span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">metadata</span>(<span class="kw">get</span>(x))<span class="op">$</span>gene_stats}) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">lapply</span>(., cbind) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>() <span class="op">%&gt;%</span><span class="st"> </span>kableExtra<span class="op">::</span><span class="kw">kable</span>(., <span class="dt">caption =</span> <span class="st">&quot;Number of genes in each dataset before and after filtering by coverage&quot;</span>)</code></pre>
+<span class="st">  </span><span class="kw">lapply</span>(., cbind) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>() <span class="op">%&gt;%</span><span class="st"> </span>kableExtra<span class="op">::</span><span class="kw">kable</span>(., <span class="dt">caption =</span> <span class="st">&#39;Number of genes in each dataset before and after filtering by coverage&#39;</span>)</code></pre>
 </div>
 <div id="variance" class="section level2">
 <h2><span class="header-section-number">2.4</span> Variance</h2>
-<pre class="sourceCode r"><code class="sourceCode r">rv_plot =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce =</span> sce_genebody, <span class="dt">annot =</span> <span class="st">&quot;Gene Body Methylation&quot;</span>){
+<pre class="sourceCode r"><code class="sourceCode r">rv_plot =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce =</span> sce_genebody, <span class="dt">annot =</span> <span class="st">&#39;Gene Body Methylation&#39;</span>){
   rowdat =<span class="st"> </span>sce <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">rowData</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>()
   <span class="kw">ggplot</span>(rowdat, <span class="kw">aes</span>(<span class="dt">x=</span>rbar, <span class="dt">y=</span>vhat, <span class="dt">col =</span> cov)) <span class="op">+</span><span class="st"> </span>
-<span class="st">    </span><span class="kw">geom_point</span>() <span class="op">+</span><span class="st"> </span><span class="kw">guides</span>(<span class="dt">col=</span><span class="kw">guide_legend</span>(<span class="st">&quot;Coverage&quot;</span>)) <span class="op">+</span>
-<span class="st">    </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="kw">TeX</span>(<span class="st">&quot;$</span><span class="ch">\\</span><span class="st">bar{r}$&quot;</span>), <span class="dt">y=</span><span class="kw">TeX</span>(<span class="st">&quot;$</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&quot;</span>),<span class="dt">title =</span> annot)
+<span class="st">    </span><span class="kw">geom_point</span>() <span class="op">+</span><span class="st"> </span><span class="kw">guides</span>(<span class="dt">col=</span><span class="kw">guide_legend</span>(<span class="st">&#39;Coverage&#39;</span>)) <span class="op">+</span>
+<span class="st">    </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="kw">TeX</span>(<span class="st">&#39;$</span><span class="ch">\\</span><span class="st">bar{r}$&#39;</span>), <span class="dt">y=</span><span class="kw">TeX</span>(<span class="st">&#39;$</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&#39;</span>),<span class="dt">title =</span> annot)
 }</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## plot all vhat ~ rbar</span>
 <span class="kw">par</span>(<span class="dt">mfrow=</span><span class="kw">c</span>(<span class="kw">ceiling</span>(<span class="kw">length</span>(annots)<span class="op">/</span><span class="dv">2</span>),<span class="dv">2</span>))
@@ -271,26 +267,26 @@ annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&
 <span class="co">## sce: sce with &#39;rates&#39; assay</span>
 <span class="co">## ncomp: integer, number of comps to get</span>
 <span class="co">## hvgs: NULL or number of hvgs to keep based on rowData(sce)$vhat</span>
-pca_met =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce =</span> <span class="st">&quot;sce_genebody&quot;</span>, <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">n_hvgs =</span> <span class="ot">NULL</span>){
-  rates =<span class="st"> </span><span class="kw">assay</span>(<span class="kw">get</span>(sce), <span class="st">&quot;rates&quot;</span>)
+pca_met =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sce =</span> <span class="st">&#39;sce_genebody&#39;</span>, <span class="dt">ncomp =</span> <span class="dv">2</span>, <span class="dt">n_hvgs =</span> <span class="ot">NULL</span>){
+  rates =<span class="st"> </span><span class="kw">assay</span>(<span class="kw">get</span>(sce), <span class="st">&#39;rates&#39;</span>)
   <span class="cf">if</span> (<span class="op">!</span><span class="kw">is.null</span>(n_hvgs)){
     <span class="cf">if</span>(n_hvgs<span class="op">&gt;=</span><span class="kw">dim</span>(<span class="kw">get</span>(sce))[<span class="dv">1</span>]){
-      <span class="kw">message</span>(<span class="st">&quot;number of genes &lt;= hvgs; all genes used&quot;</span>)
+      <span class="kw">message</span>(<span class="st">&#39;number of genes &lt;= hvgs; all genes used&#39;</span>)
     } <span class="cf">else</span>{
       rates =<span class="st"> </span>rates[<span class="dv">1</span><span class="op">:</span>n_hvgs,]
     }
   }
   out =<span class="st"> </span><span class="kw">pca</span>(<span class="kw">t</span>(rates), <span class="dt">ncomp =</span> ncomp)
-  out<span class="op">$</span>anno =<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;sce_&quot;</span>,<span class="st">&quot;&quot;</span>, sce)
+  out<span class="op">$</span>anno =<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&#39;sce_&#39;</span>,<span class="st">&#39;&#39;</span>, sce)
   <span class="kw">return</span>(out)
 }</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r">n_hvgs =<span class="st"> </span>params<span class="op">$</span>hvgs_pca
 <span class="co">## maximum number of components reaches for some comps</span>
 <span class="kw">system.time</span>({ <span class="co">## 562 sec for ncomp=3, nhvgs =2000</span>
   pca_out =<span class="st"> </span><span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">pca_met</span>(x,<span class="dt">ncomp =</span> <span class="dv">3</span>, <span class="dt">n_hvgs =</span>n_hvgs)})
-  <span class="kw">save</span>(pca_out, <span class="dt">file=</span><span class="st">&quot;RData/pca_out.RData&quot;</span>)
-})</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&quot;RData/pca_out.RData&quot;</span>)</code></pre>
+  <span class="kw">save</span>(pca_out, <span class="dt">file=</span><span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;pca_out.RData&#39;</span>)
+<span class="er">}</span>)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;pca_out.RData&#39;</span>))</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lapply</span>(pca_out, <span class="cf">function</span>(x){<span class="kw">pca.grid</span>(x, <span class="dt">top =</span> x<span class="op">$</span>anno, <span class="dt">point.label =</span> <span class="ot">TRUE</span>)})</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-4.png" width="672" style="display: block; margin: auto;" />
 ## Weighted PCA?</p>
@@ -300,7 +296,7 @@ impute using DeepCpG and plot the heatmaps:
 
 ```r
 ## hclust and heatmap for genebody methylation
-plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs.hvg), exprs_values = "counts", zlim = c(0,100),
+plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs.hvg), exprs_values = 'counts', zlim = c(0,100),
             clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation')
 ```
 -->

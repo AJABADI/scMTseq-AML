@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2019-02-07">
+<meta name="date" content="2019-02-11">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -187,11 +187,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </ul></li>
 <li class="chapter" data-level="3.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#canonical-correlation-study"><i class="fa fa-check"></i><b>3.2</b> Canonical correlation study</a><ul>
 <li class="chapter" data-level="3.2.1" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#trascriptome---promoter-methylome"><i class="fa fa-check"></i><b>3.2.1</b> Trascriptome - Promoter Methylome</a></li>
-<li class="chapter" data-level="3.2.2" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#run-using-highly-variable-genes"><i class="fa fa-check"></i><b>3.2.2</b> Run using highly variable genes</a></li>
-<li class="chapter" data-level="3.2.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#more-strict-filtering-by-coverage"><i class="fa fa-check"></i><b>3.2.3</b> More strict filtering by coverage</a></li>
 </ul></li>
-<li class="chapter" data-level="3.3" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#outlier-cells-diagnostics"><i class="fa fa-check"></i><b>3.3</b> Outlier cells diagnostics:</a></li>
-<li class="chapter" data-level="3.4" data-path="scmt-seq-analysis.html"><a href="scmt-seq-analysis.html#block-spls"><i class="fa fa-check"></i><b>3.4</b> Block sPLS</a></li>
 </ul></li>
 <li class="divider"></li>
 <li><a href="https://github.com/AJABADI/scMTseq-AML/" target="blank">See on GitHub</a></li>
@@ -214,8 +210,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
             <section class="normal" id="section-">
 <div id="scmt-seq-analysis" class="section level1">
 <h1><span class="header-section-number">Chapter 3</span> scM&amp;T-seq analysis</h1>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&#39;RData/rna_qc.RData&#39;</span>)
-<span class="kw">load</span>(<span class="st">&#39;RData/met_sces.RData&#39;</span>)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;rna_qc.RData&#39;</span>))
+<span class="kw">load</span>(<span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;met_sces.RData&#39;</span>))</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## find the common cells in both studies</span>
 cell.intersect =<span class="st"> </span><span class="kw">Reduce</span>(intersect, <span class="kw">list</span>(<span class="kw">colnames</span>(sce_genebody), <span class="kw">colnames</span>(rna_qc)))
 <span class="kw">length</span>(cell.intersect)
@@ -224,21 +220,27 @@ cell.intersect =<span class="st"> </span><span class="kw">Reduce</span>(intersec
 rna_match =<span class="st"> </span>rna_qc[,<span class="kw">colnames</span>(rna_qc) <span class="op">%in%</span><span class="st"> </span>cell.intersect]</code></pre>
 <div id="correlation" class="section level2">
 <h2><span class="header-section-number">3.1</span> Correlation</h2>
-<pre class="sourceCode r"><code class="sourceCode r">pearson_runtime =<span class="st"> </span><span class="kw">system.time</span>({ <span class="co">## 90 sec</span>
-  met_sces =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;sce_&quot;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## gene-wise pearson correlation of methylation and expression for top `top_prop` proportion of</span>
+<span class="co">## common genes b/w the two datasets based on their weighted variance in methylation datasets</span>
+<span class="co">## stored in rowData(met_sces)</span>
+<span class="co">## plus</span>
+<span class="co">## the global correlation of biological and total variance b/w meth. and expression for all genes in metadata(met_sce)</span>
+
+pearson_runtime =<span class="st"> </span><span class="kw">system.time</span>({ <span class="co">## 90 sec</span>
+  met_sces =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&#39;sce_&#39;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
   <span class="cf">for</span> (i <span class="cf">in</span> met_sces){
     <span class="kw">assign</span>(i, <span class="kw">corr_mt</span>(rna_match, <span class="kw">get</span>(i), <span class="dt">top_prop =</span> <span class="fl">0.3</span>) )
   }
 })
 pearson_runtime <span class="op">%&lt;&gt;%</span><span class="st"> </span>.[<span class="dv">1</span>] <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">unname</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">round</span>()
-<span class="kw">save</span>(<span class="dt">list =</span> <span class="kw">c</span>(met_sces, <span class="st">&quot;pearson_runtime&quot;</span>), <span class="dt">file =</span> <span class="st">&quot;RData/met_sces.RData&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r">met_sces =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;sce_&quot;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
-<span class="kw">load</span>(<span class="st">&quot;RData/met_sces.RData&quot;</span>)</code></pre>
+<span class="kw">save</span>(<span class="dt">list =</span> <span class="kw">c</span>(met_sces, <span class="st">&#39;pearson_runtime&#39;</span>), <span class="dt">file =</span> <span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;met_sces.RData&#39;</span>))</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r">met_sces =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&#39;sce_&#39;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
+<span class="kw">load</span>(<span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;met_sces.RData&#39;</span>))</code></pre>
 <div id="pearson-correlation-study-of-methylation-rate-and-expression---gene-wise" class="section level3">
 <h3><span class="header-section-number">3.1.1</span> Pearson correlation study of methylation rate and expression - gene wise</h3>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## function to create boxplot of pearson correlations of M&amp;T</span>
 <span class="co">## for all sces</span>
-boxPlot =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sces =</span> met_sces, <span class="dt">n_top =</span> <span class="dv">2000</span>){
+boxPlot =<span class="st"> </span><span class="cf">function</span>(<span class="dt">sces =</span> met_sces, <span class="dt">n_top =</span> <span class="ot">NULL</span>, <span class="dt">subTitle =</span> <span class="st">&#39;top variable genes based on $</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&#39;</span> ){
   factor_sces =<span class="st"> </span><span class="ot">NULL</span>
   corr =<span class="st"> </span><span class="ot">NULL</span>
   <span class="cf">for</span> (i <span class="cf">in</span> sces){
@@ -253,31 +255,36 @@ boxPlot =<span class="st"> </span><span class="cf">function</span>(<span class="
   
   p =<span class="st"> </span><span class="kw">ggplot</span>(<span class="dt">data =</span> <span class="ot">NULL</span>, <span class="kw">aes</span>(<span class="dt">x =</span> factor_sces , <span class="dt">y=</span>corr, <span class="dt">fill =</span> <span class="kw">factor</span>(factor_sces))) <span class="op">+</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">geom_boxplot</span>(<span class="dt">na.rm =</span> <span class="ot">TRUE</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_flip</span>() <span class="op">+</span>
-<span class="st">    </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&quot;&quot;</span>, <span class="dt">y =</span> <span class="st">&quot;Pearson correlation&quot;</span>, 
-         <span class="dt">title =</span> <span class="st">&quot;Gene-wise correlation of methylation and transcription&quot;</span>, <span class="dt">subtitle =</span> <span class="kw">TeX</span>(<span class="kw">paste0</span>(<span class="st">&quot;top &quot;</span>,n_top, <span class="st">&quot; genes based on &quot;</span>,<span class="st">&quot;$</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&quot;</span>))) <span class="op">+</span>
+<span class="st">    </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&#39;&#39;</span>, <span class="dt">y =</span> <span class="st">&#39;Pearson correlation&#39;</span>, 
+         <span class="dt">title =</span> <span class="st">&#39;Gene-wise correlation of methylation and transcription&#39;</span>, <span class="dt">subtitle =</span> <span class="kw">TeX</span>(subTitle)) <span class="op">+</span>
 <span class="st">    </span><span class="kw">guides</span>(<span class="dt">fill=</span><span class="ot">FALSE</span>)
   <span class="kw">return</span>(p)
   }</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## Pearson correlation boxplots</span>
-<span class="kw">boxPlot</span>()</code></pre>
+<span class="kw">boxPlot</span>(<span class="dt">sces =</span> met_sces, <span class="dt">n_top =</span> <span class="ot">NULL</span>, <span class="dt">subTitle =</span> <span class="st">&#39;top 30% variable genes based on $</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&#39;</span> )</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-52-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="does-the-variation-in-methylation-in-genebody-correlates-with-variation-in-expression" class="section level3">
 <h3><span class="header-section-number">3.1.2</span> Does the variation in methylation in genebody correlates with variation in expression?</h3>
-<pre class="sourceCode r"><code class="sourceCode r">var_corr =<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">matrix</span>(<span class="dt">nrow =</span> <span class="kw">length</span>(met_sces),<span class="dt">ncol =</span> <span class="dv">2</span>),
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## initialise a data.frame to store the pearson correlation of total and biological variance...</span>
+<span class="co">## b/w expression and each methylation dataset</span>
+var_corr =<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">matrix</span>(<span class="dt">nrow =</span> <span class="kw">length</span>(met_sces),<span class="dt">ncol =</span> <span class="dv">2</span>),
                       <span class="dt">row.names =</span> met_sces )
-<span class="kw">colnames</span>(var_corr) =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;total&quot;</span>, <span class="st">&quot;biological&quot;</span>)
+<span class="kw">colnames</span>(var_corr) =<span class="st"> </span><span class="kw">c</span>(<span class="st">&#39;total&#39;</span>, <span class="st">&#39;biological&#39;</span>)
+
+<span class="co">## calculate them</span>
 <span class="cf">for</span> (i <span class="cf">in</span> met_sces){
   var_corr[i,] =<span class="st"> </span><span class="kw">c</span>(<span class="kw">metadata</span>(<span class="kw">get</span>(i))<span class="op">$</span>corr_var_tot_wtd_by_cov[<span class="dv">1</span>],
                    <span class="kw">metadata</span>(<span class="kw">get</span>(i))<span class="op">$</span>corr_var_bio_wtd_by_cov[<span class="dv">1</span>])
 }
-
+<span class="co">## plot</span>
 <span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_col</span>(<span class="kw">aes</span>(<span class="kw">factor</span>(<span class="kw">rownames</span>(var_corr)),var_corr<span class="op">$</span>total, <span class="dt">fill =</span> <span class="kw">factor</span>(<span class="kw">rownames</span>(var_corr))), <span class="dt">shape=</span><span class="dv">23</span>, <span class="dt">size=</span><span class="dv">4</span>) <span class="op">+</span><span class="st"> </span><span class="kw">guides</span>(<span class="dt">fill=</span><span class="ot">FALSE</span>) <span class="op">+</span>
-<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&quot;Genomic Context&quot;</span>, <span class="dt">y=</span> <span class="st">&quot;Pearson correlation&quot;</span>, <span class="dt">title =</span> <span class="st">&quot;Correlation of total transcrption variance </span><span class="ch">\n</span><span class="st"> and weighted methylation variance&quot;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_cartesian</span>(<span class="dt">ylim =</span> <span class="kw">c</span>(<span class="op">-</span><span class="fl">0.3</span>, <span class="fl">0.3</span>))</code></pre>
+<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&#39;Genomic Context&#39;</span>, <span class="dt">y=</span> <span class="st">&#39;Pearson correlation&#39;</span>, <span class="dt">title =</span> <span class="st">&#39;Correlation of total transcrption variance </span><span class="ch">\n</span><span class="st"> and weighted methylation variance&#39;</span>) <span class="op">+</span><span class="st"> </span><span class="kw">coord_cartesian</span>(<span class="dt">ylim =</span> <span class="kw">c</span>(<span class="op">-</span><span class="fl">0.3</span>, <span class="fl">0.3</span>))</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-53-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_col</span>(<span class="kw">aes</span>(<span class="kw">factor</span>(<span class="kw">rownames</span>(var_corr)),var_corr<span class="op">$</span>bio, <span class="dt">fill =</span> <span class="kw">factor</span>(<span class="kw">rownames</span>(var_corr))), <span class="dt">shape=</span><span class="dv">23</span>, <span class="dt">size=</span><span class="dv">4</span>) <span class="op">+</span><span class="st"> </span><span class="kw">guides</span>(<span class="dt">fill=</span><span class="ot">FALSE</span>) <span class="op">+</span>
-<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&quot;Genomic Context&quot;</span>, <span class="dt">y=</span> <span class="st">&quot;Pearson correlation&quot;</span>, <span class="dt">title =</span> <span class="st">&quot;Correlation of decomposed biological transcrption variance </span><span class="ch">\n</span><span class="st"> and weighted methylation variance&quot;</span>)<span class="op">+</span><span class="st"> </span><span class="kw">coord_cartesian</span>(<span class="dt">ylim =</span> <span class="kw">c</span>(<span class="op">-</span><span class="fl">0.3</span>, <span class="fl">0.3</span>))</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-53-2.png" width="672" style="display: block; margin: auto;" /></p>
+<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&#39;Genomic Context&#39;</span>, <span class="dt">y=</span> <span class="st">&#39;Pearson correlation&#39;</span>, <span class="dt">title =</span> <span class="st">&#39;Correlation of decomposed biological transcrption variance </span><span class="ch">\n</span><span class="st"> and weighted methylation variance&#39;</span>)<span class="op">+</span><span class="st"> </span><span class="kw">coord_cartesian</span>(<span class="dt">ylim =</span> <span class="kw">c</span>(<span class="op">-</span><span class="fl">0.3</span>, <span class="fl">0.3</span>))</code></pre>
+<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-53-2.png" width="672" style="display: block; margin: auto;" />
+Non-CGI promoters have the highest correlation magnititude and show positive correlation when total variance is used, and negative when biological is considered.</p>
 </div>
 </div>
 <div id="canonical-correlation-study" class="section level2">
@@ -285,338 +292,78 @@ boxPlot =<span class="st"> </span><span class="cf">function</span>(<span class="
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## dataset parameters for plot</span>
 <span class="co">## first one will be taken as Y, the rest X&#39;s</span>
 <span class="co">## all that are in the sPLS list + RNA</span>
-par_plot =<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">row.names =</span> <span class="kw">c</span>(<span class="st">&quot;rna_match&quot;</span>, <span class="st">&quot;sce_genebody&quot;</span>, <span class="st">&quot;sce_prom&quot;</span>, <span class="st">&quot;sce_prom_cgi&quot;</span>, <span class="st">&quot;sce_prom_noncgi&quot;</span> ),
-                      <span class="dt">label =</span> <span class="kw">c</span>(<span class="st">&quot;Transcriptome&quot;</span>,<span class="st">&quot;Genebody&quot;</span>, <span class="st">&quot;Promoter&quot;</span>, <span class="st">&quot;Promoter (CGI)&quot;</span>, <span class="st">&quot;Promoter (non-CGI)&quot;</span>),
+par_plot =<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">row.names =</span> <span class="kw">c</span>(<span class="st">&#39;rna_match&#39;</span>, <span class="st">&#39;sce_genebody&#39;</span>, <span class="st">&#39;sce_prom&#39;</span>, <span class="st">&#39;sce_prom_cgi&#39;</span>, <span class="st">&#39;sce_prom_noncgi&#39;</span> ),
+                      <span class="dt">label =</span> <span class="kw">c</span>(<span class="st">&#39;Transcriptome&#39;</span>,<span class="st">&#39;Genebody&#39;</span>, <span class="st">&#39;Promoter&#39;</span>, <span class="st">&#39;Promoter (CGI)&#39;</span>, <span class="st">&#39;Promoter (non-CGI)&#39;</span>),
                       <span class="dt">shape =</span><span class="kw">c</span>(<span class="dv">17</span>, <span class="dv">19</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">8</span>), <span class="co">## shapes for corr circ plots</span>
                       <span class="dt">col =</span> <span class="kw">color.mixo</span>(<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">8</span>))) <span class="co">## colors for corr circ plots</span></code></pre>
 <div id="trascriptome---promoter-methylome" class="section level3">
 <h3><span class="header-section-number">3.2.1</span> Trascriptome - Promoter Methylome</h3>
 <!--PICKUP-->
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## spls for all methylation data against transcriptome</span>
-spls_all_runtime =<span class="st"> </span><span class="kw">system.time</span>({ <span class="co">## 64 sec</span>
-  spls_all =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>)
-})
-spls_runtime <span class="op">%&lt;&gt;%</span><span class="st"> </span>.[<span class="dv">1</span>] <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">unname</span>()
-<span class="kw">save</span>(spls_all,spls_all_runtime, <span class="dt">file=</span><span class="st">&quot;RData/spls_all.RData&quot;</span> )</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&quot;utils/spls_plot.R&quot;</span>)
-<span class="kw">spls_plot</span>(spls_all)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-8.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-9.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-10.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-11.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-57-12.png" width="672" style="display: block; margin: auto;" /></p>
-<p>H8 was also an outlier from PCA analysis. So we will exclude it.</p>
-<pre class="sourceCode r"><code class="sourceCode r">outliers =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;H8&quot;</span>)
-spls_all_ex_H8 =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>, <span class="dt">exclude =</span> outliers)
-<span class="kw">save</span>(spls_all_ex_H8, <span class="dt">file=</span><span class="st">&quot;RData/spls_all_ex_H8.RData&quot;</span> )</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&quot;utils/spls_plot.R&quot;</span>)
-<span class="kw">spls_plot</span>(spls_all_ex_H8)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-8.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-9.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-10.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-11.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-60-12.png" width="672" style="display: block; margin: auto;" /></p>
+<span class="co">## function for spls using top x% variable genes from each dataset</span>
+top_pct_spls =<span class="st"> </span><span class="cf">function</span>(<span class="dt">Top_pct =</span> top_pct, <span class="co">## portion of top genes</span>
+                        <span class="dt">Spls_name =</span> <span class="ot">NULL</span>,<span class="co">## name of the spls list</span>
+                        <span class="dt">NZV =</span> nzv ){ <span class="co">## near-zero-variance in data?</span>
+  <span class="cf">if</span>(<span class="kw">is.null</span>(Spls_name)) {Spls_name =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&#39;spls_all_top_&#39;</span>, Top_pct<span class="op">*</span><span class="dv">100</span>,<span class="st">&quot;pct&quot;</span>)}
+  
+  <span class="kw">assign</span>(Spls_name,
+       <span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>, <span class="dt">top_x =</span> Top_pct, <span class="dt">top_y =</span> Top_pct, <span class="dt">near_zer_var =</span> NZV))
+  <span class="kw">save</span>(<span class="dt">list=</span><span class="kw">c</span>(Spls_name), <span class="dt">file=</span>stringr<span class="op">::</span><span class="kw">str_c</span>(params<span class="op">$</span>RData,<span class="st">&#39;/&#39;</span>,Spls_name,<span class="st">&#39;.RData&#39;</span> ))
+  <span class="kw">return</span>(Spls_name)
+}
+
+<span class="co">## function to create spls object name</span>
+splsName =<span class="st"> </span><span class="cf">function</span>(<span class="dt">Top_pct =</span> top_pct) {spls_name =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&#39;spls_all_top_&#39;</span>, Top_pct<span class="op">*</span><span class="dv">100</span>,<span class="st">&quot;pct&quot;</span>)}</code></pre>
+<div id="all-genes" class="section level4">
+<h4><span class="header-section-number">3.2.1.1</span> All genes</h4>
+<pre class="sourceCode r"><code class="sourceCode r">top_pct =<span class="st"> </span><span class="dv">1</span> <span class="co">## all genes</span>
+nzv =<span class="st"> </span><span class="ot">TRUE</span>
+
+spls_name =<span class="st"> </span><span class="kw">splsName</span>(top_pct)
+<span class="kw">top_pct_spls</span>(top_pct,<span class="dt">Spls_name =</span> spls_name, <span class="dt">NZV =</span> nzv)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&#39;utils/spls_plot.R&#39;</span>)
+<span class="kw">spls_plot</span>(<span class="kw">get</span>(spls_name), <span class="dt">pars =</span> par_plot)</code></pre>
+<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-8.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-9.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-10.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-11.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-12.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-13.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-14.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-15.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-58-16.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&#39;utils/spls_plot.R&#39;</span>)
+<span class="kw">png</span>(<span class="dt">filename =</span> <span class="st">&#39;../output/png/plotVar_gbody_transcriptome_all_genes.png&#39;</span>,<span class="dt">height =</span> <span class="dv">700</span>, <span class="dt">width =</span> <span class="dv">700</span><span class="op">/</span><span class="fl">0.8</span> )
+<span class="kw">spls_plot</span>(spls_all, <span class="dt">pars =</span> par_plot[<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>,],<span class="dt">plots =</span> <span class="st">&#39;plotVar&#39;</span>)
+<span class="kw">dev.off</span>()</code></pre>
 </div>
-<div id="run-using-highly-variable-genes" class="section level3">
-<h3><span class="header-section-number">3.2.2</span> Run using highly variable genes</h3>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## spls for all methylation data against transcriptome - top 30% variable genes</span>
-spls_ex_H8_top_30pct =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>, <span class="dt">top_x =</span> <span class="fl">0.3</span>, <span class="dt">top_y =</span> <span class="fl">0.3</span>, <span class="dt">exclude =</span> outliers)
-<span class="kw">save</span>(spls_ex_H8_top_30pct, <span class="dt">file=</span><span class="st">&quot;RData/spls_ex_H8_top_30pct.RData&quot;</span> )</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spls_plot</span>(spls_ex_H8_top_30pct)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-8.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-9.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-10.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-11.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-63-12.png" width="672" style="display: block; margin: auto;" /></p>
-<p>Less outlier problem and more agreement problem.</p>
+<div id="using-top-50-genes-from-each-dataset" class="section level4">
+<h4><span class="header-section-number">3.2.1.2</span> using top 50% genes from each dataset:</h4>
+<pre class="sourceCode r"><code class="sourceCode r">top_pct =<span class="st"> </span><span class="fl">0.5</span> <span class="co">## all genes</span>
+nzv =<span class="st"> </span><span class="ot">TRUE</span>
+
+spls_name =<span class="st"> </span><span class="kw">splsName</span>(top_pct)
+<span class="kw">top_pct_spls</span>(top_pct,<span class="dt">Spls_name =</span> spls_name, <span class="dt">NZV =</span> nzv)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spls_plot</span>(<span class="kw">get</span>(spls_name), <span class="dt">pars =</span> par_plot)</code></pre>
+<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-8.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-9.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-10.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-11.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-12.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-13.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-14.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-15.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-62-16.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&#39;utils/spls_plot.R&#39;</span>)
+png_name =<span class="st"> </span><span class="kw">str_c</span>(<span class="st">&#39;../output/png/plotVar_gbody_transcriptome_top_&#39;</span>, top_pct<span class="op">*</span><span class="dv">100</span>, <span class="st">&#39;_pct_genes_from_each.png&#39;</span> )
+<span class="kw">png</span>(<span class="dt">filename =</span> png_name, <span class="dt">height =</span> <span class="dv">700</span>, <span class="dt">width =</span> <span class="dv">700</span><span class="op">/</span><span class="fl">0.8</span>)
+<span class="kw">spls_plot</span>(<span class="kw">get</span>(spls_name), <span class="dt">pars =</span> par_plot[<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>,],<span class="dt">plots =</span> <span class="st">&#39;plotVar&#39;</span>)
+<span class="kw">dev.off</span>()</code></pre>
 </div>
-<div id="more-strict-filtering-by-coverage" class="section level3">
-<h3><span class="header-section-number">3.2.3</span> More strict filtering by coverage</h3>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## spls for all methylation data against transcriptome -  coverage &gt;=75%</span>
-spls_ex_H8_cov_<span class="fl">0.75</span> =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>, <span class="dt">cov =</span> <span class="fl">0.75</span>, <span class="dt">exclude =</span> outliers)
-<span class="kw">save</span>(spls_ex_H8_cov_<span class="fl">0.75</span>, <span class="dt">file=</span><span class="st">&quot;RData/spls_ex_H8_cov_0.75.RData&quot;</span> )
-<span class="co"># Number of genes remained in methylation: 11525</span>
-<span class="co"># Number of genes remained in methylation: 575</span>
-<span class="co"># Number of genes remained in methylation: 401</span>
-<span class="co"># Number of genes remained in methylation: 174</span></code></pre>
-<p>The number of genes that pased filtering was low in promoter methylation datasets. D5 and D7 show outlier behaviour.
-Sample and Arrow plots without the outlier cells:</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spls_plot</span>(spls_ex_H8_cov_<span class="fl">0.75</span>, <span class="dt">hide =</span> <span class="kw">c</span>(<span class="st">&quot;D5&quot;</span>, <span class="st">&quot;D7&quot;</span>), <span class="dt">plots =</span> <span class="kw">c</span>(<span class="st">&quot;plotIndiv&quot;</span>, <span class="st">&quot;plotArrow&quot;</span>))</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-8.png" width="672" style="display: block; margin: auto;" /></p>
-</div>
-</div>
-<div id="outlier-cells-diagnostics" class="section level2">
-<h2><span class="header-section-number">3.3</span> Outlier cells diagnostics:</h2>
-<p>Total number of missing values for all cells:</p>
-<pre class="sourceCode r"><code class="sourceCode r">outliers =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;H8&quot;</span>, <span class="st">&quot;H6&quot;</span>, <span class="st">&quot;H7&quot;</span>, <span class="st">&quot;D5&quot;</span>, <span class="st">&quot;D7&quot;</span>, <span class="st">&quot;E8&quot;</span>)
-NAs =<span class="st"> </span><span class="kw">colSums</span>(<span class="kw">is.na</span>(<span class="kw">assay</span>(sce_genebody,<span class="st">&quot;rates&quot;</span>)))
-cols =<span class="st"> </span><span class="kw">rep</span>(<span class="st">&quot;darkblue&quot;</span>, <span class="kw">length</span>(NAs))
-<span class="kw">names</span>(cols) =<span class="st"> </span><span class="kw">names</span>(NAs)
-cols[outliers] =<span class="st"> &quot;red&quot;</span>
-<span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_text</span>(<span class="kw">aes</span>(NAs, <span class="kw">names</span>(NAs), <span class="dt">label =</span> <span class="kw">names</span>(NAs)), <span class="dt">col =</span> cols) <span class="op">+</span>
-<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x=</span> <span class="st">&quot;Total number of NAs&quot;</span>, <span class="dt">y=</span><span class="st">&quot;Cell&quot;</span>)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-67-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>From outlier cells, only H8 has relatively high number of NA’s. Three of outliers are adjacent cells, which indicates there might have been technical effect.</p>
-<p>Total number of observations all cells:</p>
-<pre class="sourceCode r"><code class="sourceCode r">weight_sums =<span class="st"> </span><span class="kw">colSums</span>(<span class="kw">assay</span>(sce_genebody, <span class="st">&quot;weights&quot;</span>), <span class="dt">na.rm =</span> <span class="ot">TRUE</span>)
-cols =<span class="st"> </span><span class="kw">rep</span>(<span class="st">&quot;darkblue&quot;</span>, <span class="kw">length</span>(NAs))
-<span class="kw">names</span>(cols) =<span class="st"> </span><span class="kw">names</span>(weight_sums)
-cols[outliers] =<span class="st"> &quot;red&quot;</span>
-<span class="kw">ggplot</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_text</span>(<span class="kw">aes</span>(weight_sums, <span class="kw">names</span>(weight_sums), <span class="dt">label =</span> <span class="kw">names</span>(weight_sums)), <span class="dt">col =</span> cols) <span class="op">+</span>
-<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x=</span> <span class="st">&quot;Total weights for cells&quot;</span>, <span class="dt">y=</span><span class="st">&quot;Cell&quot;</span>)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-68-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>Not a clear cause.</p>
-</div>
-<div id="block-spls" class="section level2">
-<h2><span class="header-section-number">3.4</span> Block sPLS</h2>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&quot;utils/block_spls_plot.R&quot;</span>)
-<span class="co">## Y: transcriptome, X = c(genebody, promoter) methylome</span>
-block_gbody_prom =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">df =</span> par_plot, <span class="dt">x =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>),<span class="dt">y =</span> <span class="dv">1</span>, <span class="dt">ncomp =</span><span class="dv">2</span>,
-                          <span class="dt">top_x =</span> <span class="ot">NULL</span>, <span class="dt">top_y =</span> <span class="ot">NULL</span>, <span class="dt">cov =</span> <span class="ot">NULL</span>, <span class="dt">exclude=</span><span class="st">&quot;H8&quot;</span>,
-                          <span class="dt">keepX=</span><span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">keepY=</span><span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">block=</span><span class="ot">TRUE</span>, <span class="dt">mode=</span><span class="st">&quot;canonical&quot;</span>)
-<span class="kw">save</span>(block_gbody_prom, <span class="dt">file=</span><span class="st">&quot;RData/block_gbody_prom.RData&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&quot;RData/block_gbody_prom.RData&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">block_spls_plot</span>(<span class="dt">block =</span> block_gbody_prom, <span class="dt">pars =</span> par_plot, <span class="dt">x=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), <span class="dt">y=</span><span class="dv">1</span>)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-71-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-71-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-71-3.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="co">## Y: transcriptome, X = c(genebody, promoter CGI) methylome</span>
-block_gbody_prom_cgi =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">df =</span> par_plot, <span class="dt">x =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>),<span class="dt">y =</span> <span class="dv">1</span>, <span class="dt">ncomp =</span><span class="dv">2</span>,
-                          <span class="dt">top_x =</span> <span class="ot">NULL</span>, <span class="dt">top_y =</span> <span class="ot">NULL</span>, <span class="dt">cov =</span> <span class="ot">NULL</span>, <span class="dt">exclude=</span><span class="st">&quot;H8&quot;</span>,
-                          <span class="dt">keepX=</span><span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">keepY=</span><span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">block=</span><span class="ot">TRUE</span>, <span class="dt">mode=</span><span class="st">&quot;canonical&quot;</span>)
-<span class="kw">save</span>(block_gbody_prom_cgi, <span class="dt">file=</span><span class="st">&quot;RData/block_gbody_prom_cgi.RData&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">block_spls_plot</span>(<span class="dt">block =</span> block_gbody_prom_cgi, <span class="dt">pars =</span> par_plot, <span class="dt">x=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>), <span class="dt">y=</span><span class="dv">1</span>)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-73-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-73-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-73-3.png" width="672" style="display: block; margin: auto;" />
-E8 and H6 consistently showed outlier behaviour. So we’ll filter them and repeat the analysis.</p>
-<pre class="sourceCode r"><code class="sourceCode r">outliers =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;H8&quot;</span>, <span class="st">&quot;H6&quot;</span>, <span class="st">&quot;E8&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&quot;utils/block_spls_plot.R&quot;</span>)
-<span class="co">## Y: transcriptome, X = c(genebody, promoter) methylome</span>
-block_gbody_prom_outliers =<span class="st"> </span><span class="kw">spls_wrapper</span>(<span class="dt">df =</span> par_plot, <span class="dt">x =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>),<span class="dt">y =</span> <span class="dv">1</span>, <span class="dt">ncomp =</span><span class="dv">2</span>,
-                          <span class="dt">top_x =</span> <span class="ot">NULL</span>, <span class="dt">top_y =</span> <span class="ot">NULL</span>, <span class="dt">cov =</span> <span class="ot">NULL</span>, <span class="dt">exclude=</span>outliers,
-                          <span class="dt">keepX=</span><span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">keepY=</span><span class="kw">c</span>(<span class="dv">50</span>,<span class="dv">50</span>), <span class="dt">block=</span><span class="ot">TRUE</span>, <span class="dt">mode=</span><span class="st">&quot;canonical&quot;</span>)
-<span class="kw">save</span>(block_gbody_prom_outliers, <span class="dt">file=</span><span class="st">&quot;RData/block_gbody_prom_outliers.RData&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="st">&quot;RData/block_gbody_prom_outliers.RData&quot;</span>)</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">block_spls_plot</span>(<span class="dt">block =</span> block_gbody_prom_outliers, <span class="dt">pars =</span> par_plot, <span class="dt">x=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>), <span class="dt">y=</span><span class="dv">1</span>)</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-77-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-77-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-77-3.png" width="672" style="display: block; margin: auto;" /></p>
-<!-- ```{r} -->
-<!-- plotVar(block.spls, legend = T, title = 'Correlation Circle Plots - Transcriptome against Methylation', pch = c(16,20,17), col= color.mixo(c(2,4,1))) -->
-<!-- ## see if there are outliers in the data using sample and arrow plots -->
-<!-- plotIndiv(block.spls) -->
-<!-- plotArrow(block.spls, ind.names = T) -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- ## all genes in latent factors -->
-<!-- genes.rna = c( -->
-<!--   selectVar(block.spls, comp = 1)$Y$name, -->
-<!--   selectVar(block.spls, comp = 2)$Y$name -->
-<!-- ) -->
-<!-- genes.body = c( -->
-<!--   selectVar(block.spls, comp = 1)$gene.met$name, -->
-<!--   selectVar(block.spls, comp = 2)$gene.met$name -->
-<!-- ) -->
-<!-- genes.prom = c( -->
-<!--   selectVar(block.spls, comp = 1)$prom.met$name, -->
-<!--   selectVar(block.spls, comp = 2)$prom.met$name -->
-<!--   ) -->
-<!-- genes = c(genes.rna, genes.body, genes.prom) -->
-<!-- length(genes) -->
-<!-- ## only 3 repetitions -->
-<!-- length(unique(genes)) -->
-<!-- ## duplicated genes -->
-<!-- genes[duplicated(genes)] -->
-<!-- ## in which dataset are they? -->
-<!-- which(genes == genes[duplicated(genes)][1]) -->
-<!-- ## comp1 genebody and comp 1 prom -->
-<!-- which(genes == genes[duplicated(genes)][2]) -->
-<!-- ## comp1 rna and comp 2 prom -->
-<!-- which(genes == genes[duplicated(genes)][3]) -->
-<!-- ## comp2 rna and comp 2 prom -->
-<!-- ``` -->
-<!-- #### Do the signature genes exhibit different correlation structures? -->
-<!-- ```{r} -->
-<!-- boxplot(genebody.cor$pearson[genes.body] , horizontal=T) -->
-<!-- boxplot(prom.cor$pearson[genes.prom] , horizontal=T) -->
-<!-- ``` -->
-<!-- ```{r, warning=F, message =F} -->
-<!-- ggplot(genebody.cor$vars$all[genes.body,]) + geom_point(aes(x= met, y = expr), col = 'darkblue') + -->
-<!--   labs(x= "variation in genebody methylation", y="variation in gene expression", title = 'correlation b/w variation in expression and genebody methylation - signature genes') -->
-<!-- ``` -->
-<!-- ```{r, warning=F, message=F} -->
-<!-- ggplot(prom.cor$vars$all[genes.prom,]) + geom_point(aes(x= met, y = expr), col = 'darkblue') + -->
-<!--   labs(x= "variation in promoter methylation", y="variation in gene expression", title = 'correlation b/w variation in expression and promoter methylation - signature genes') -->
-<!-- ``` -->
-<!-- #### Q: are the signature genes biologicall dependent? -->
-<!-- ## 3kb Windows -->
-<!-- <!-- -->
-<!-- Add the option to re-summarise the methylation data here: -->
-<!-- if(!io$use.parsed){ -->
-<!-- } else { -->
-<!-- } -->
-<!-- -->
-<p>–&gt;
-<!-- ```{r, eval=F} -->
-<!-- system.time({ -->
-<!--  ##   user  system elapsed -->
-<!--  ## 18.916   5.696  36.746 -->
-<!-- window3kb = fread(io$met_3kb) -->
-<!-- }) -->
-<!-- ``` -->
-<!-- ```{r, echo=F} -->
-<!-- # save(window3kb, file='window3kb.RData') -->
-<!-- load('window3kb.RData') -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- ## number of seqnames -->
-<!-- dim(window3kb)[1] ## 1,923,673 -->
-<!-- ## valid chromosomes -->
-<!-- valid.chr = c(as.character(1:22), 'MT', 'X', 'Y') -->
-<!-- ## some invalid chromoses from data -->
-<!-- head(window3kb$seqnames[!window3kb$seqnames %in% valid.chr]) -->
-<!-- ## number of invalid seqnames -->
-<!-- length(window3kb$seqnames[!window3kb$seqnames %in% valid.chr]) ## 5650 -->
-<!-- ## filter seqnames to keep valid chromosomes only -->
-<!-- window3kb = window3kb[seqnames %in% valid.chr] --></p>
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- # window3kb.copy = window3kb -->
-<!-- window3kb.overlap = window3kb -->
-<!-- system.time({ -->
-<!--           ##  user  system elapsed -->
-<!--           ## 4.073   2.501   7.482 -->
-<!-- ## create a 'bin' variable -->
-<!-- ## using 1e5 bins made it too uniform, i.e. meth. rate ~0.75 -->
-<!-- ## sticking with the 3kb window -->
-<!-- bin.width  =3e3 -->
-<!-- ## I have not differentiated between forward and backward strand, to be checked with Heather -->
-<!-- ## [Al] also, some windows overlap - this should be considered later on (weighted ovrlapping) -->
-<!-- window3kb[,bin:=ceiling(start/bin.width)] -->
-<!-- ## dropping all columns except for rates and bin -->
-<!-- window3kb = window3kb[, grepl('rate', colnames(window3kb))| -->
-<!--                         grepl('bin', colnames(window3kb)), with=F] -->
-<!-- ## dropping all columns except for rates and start -->
-<!-- window3kb.overlap = window3kb.overlap[, grepl('rate', colnames(window3kb.overlap))| -->
-<!--                         grepl('start', colnames(window3kb.overlap)), with=F] -->
-<!-- ## remove every column name that matches 'var' - rate variance data -->
-<!-- window3kb = window3kb[,!grepl('var', colnames(window3kb)), with=F] -->
-<!-- window3kb.overlap = window3kb.overlap[,!grepl('var', colnames(window3kb.overlap)), with=F] -->
-<!-- dim(window3kb) # 1923673      41 -->
-<!-- dim(window3kb.overlap) -->
-<!-- source('utils/name.cells.by.wells.R') -->
-<!-- colnames(window3kb) = name.cells.by.wells(colnames(window3kb), pos.in.string = 'first') -->
-<!-- colnames(window3kb.overlap) = name.cells.by.wells(colnames(window3kb.overlap), pos.in.string = 'first') -->
-<!-- ## create a 'weight' variable for the number of observations in each bin -->
-<!-- ## [Al] although, what also matters is the number of times each cell has been covered in total -->
-<!-- window3kb = window3kb[,weight:=.N, by = bin] -->
-<!-- window3kb.overlap = window3kb.overlap[,s.weight:=.N, by = start] -->
-<!--  #   user  system elapsed -->
-<!--  # 22.470  15.497  54.818 -->
-<!-- ## average over bins and disregard NAs- weights will remain the same so not excluded -->
-<!-- ## bins with no observation for a given cell will return NaNs -->
-<!-- window3kb = window3kb[,lapply(.SD,mean, na.rm=TRUE), by=bin] -->
-<!-- window3kb.overlap = window3kb.overlap[,lapply(.SD,mean, na.rm=TRUE), by=start] -->
-<!-- dim(window3kb) ## 82981    42 -->
-<!-- window3kb$n.NAs = rowSums(is.na(window3kb)) -->
-<!-- window3kb.overlap$n.NAs = rowSums(is.na(window3kb.overlap)) -->
-<!-- }) -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- hist(window3kb$n.NAs, main='histogram of number of NAs in binned 3kb windows') -->
-<!-- hist(window3kb.overlap$n.NAs, main='histogram of number of NAs in all 3kb windows') -->
-<!-- ``` -->
-<!-- ```{r, eval=F} -->
-<!-- ## filter out NAs -->
-<!-- window3kb = window3kb[n.NAs<=10] ## arbitrary -->
-<!-- window3kb.overlap = window3kb.overlap[n.NAs<=10] ## arbitrary -->
-<!-- dim(window3kb) ## 74k    43 -->
-<!-- dim(window3kb.overlap) ## 138k    43 -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- ## plot a given cell's weight -->
-<!-- plot(window3kb$weight, as.matrix(window3kb[,9]), xlim = c(0,250), pch=16, col=rgb(red=0.1, green=0.2, blue=0.7, alpha=0.3), -->
-<!--      main= 'methylation rate at each binned window for a \n given cell vs the window coverage') -->
-<!-- plot(window3kb.overlap$s.weight, as.matrix(window3kb.overlap[,9]), xlim = c(0,250), pch=16, col=rgb(red=0.1, green=0.2, blue=0.7, alpha=0.3), -->
-<!--      main= 'methylation rate at each window for a \n given cell vs the window coverage') -->
-<!-- ## part of variation in methylation is due to dropouts, i.e. low weight -->
-<!-- ## plot the boxplot of weights -->
-<!-- boxplot(window3kb$weight, horizontal=T) -->
-<!-- ``` -->
-<!-- ```{r, eval=F} -->
-<!-- ## filtering by weight -->
-<!-- ## require each window to be covered at least x times -->
-<!-- min.weight = 20 ## arbitrary -->
-<!-- window3kb = window3kb[weight > min.weight] -->
-<!-- dim(window3kb) ##  35431    43  - for min.weight = median -->
-<!-- ``` -->
-<!-- ```{r, eval=F} -->
-<!-- system.time({ -->
-<!--     ##  user  system elapsed -->
-<!--     ## 24.462   0.207  24.994 -->
-<!-- # ## add mean meth. rate for each bin: -->
-<!-- window3kb[,mean:=apply(.SD,1, mean, na.rm=TRUE ) , by=bin, .SDcols=c(2:41)] -->
-<!-- window3kb.overlap[,mean:=apply(.SD,1, mean, na.rm=TRUE ) , by=start, .SDcols=c(2:41)] -->
-<!-- ## checking whether there are near zero means for calculating cv -->
-<!-- hist(window3kb$mean, main='mean methylation rate for all cells - binned 3kb windows') -->
-<!-- hist(window3kb.overlap$mean, main='mean methylation rate for all cells - 3kb windows') -->
-<!-- min(window3kb$mean)## 0.5275498 -->
-<!-- ## so we'll calculate cv with no pseudo value at denominator -->
-<!-- window3kb[,sd:=apply(.SD,1, sd, na.rm=TRUE) , by=bin,.SDcols=c(2:41)] -->
-<!-- window3kb[,cv:=sd/mean] -->
-<!-- window3kb.overlap[,sd:=apply(.SD,1, sd, na.rm=TRUE) , by=start,.SDcols=c(2:41)] -->
-<!-- window3kb.overlap[,cv:=sd/mean] -->
-<!-- plot(window3kb$cv~window3kb$mean, col = 'darkblue', main = 'BCV for 3kb windows') -->
-<!-- ## order by cv for highly varibale regions -->
-<!-- window3kb=window3kb[order(-cv)] -->
-<!-- window3kb.overlap=window3kb.overlap[order(-cv)] -->
-<!-- ## keep the top variable windows -->
-<!-- n.region = 5000 -->
-<!-- window3kb.hvw=window3kb[1:n.region] -->
-<!-- window3kb.overlap.hvw=window3kb.overlap[1:n.region] -->
-<!-- ## create SCE -->
-<!-- hvw.sce = SingleCellExperiment(assays = list(counts = as.matrix(window3kb.hvw[,c(2:41)]))) -->
-<!-- hvw.overlap.sce = SingleCellExperiment(assays = list(counts = as.matrix(window3kb.overlap.hvw[,c(2:41)]))) -->
-<!-- }) -->
-<!-- ``` -->
-<!-- ### Dimension Reduction -->
-<!-- ```{r} -->
-<!-- system.time({ -->
-<!--      ## user  system elapsed -->
-<!--     ## 253.382  31.798 286.293 -->
-<!-- # pca.met.window = pca(t(counts(hvw.sce)), ncomp = 3) -->
-<!-- # save(pca.met.window, file= file.path(io$RData,'pca.met.window.RData')) -->
-<!-- load(file.path(io$RData,'pca.met.window.RData')) -->
-<!-- }) -->
-<!-- ## outliers exist: -->
-<!-- source('utils/plot.pca.R') -->
-<!-- plot.pca(gg.pca = gg.pca, pca.obj = pca.met.window, top = 'PCA - methylation in variable 3kb windows') -->
-<!-- ## find outliers -->
-<!-- variates =as.data.frame(pca.met.window$variates$X) -->
-<!-- variates.ordered = variates[order((abs(variates$PC1)+abs(variates$PC2)+abs(variates$PC3)), decreasing = T),] -->
-<!-- ## plot labeled pca to find outliers -->
-<!-- ggplot(variates.ordered, aes(x = PC1, y = PC2)) + -->
-<!--   geom_point(size = 3, col=color.mixo(1)) + -->
-<!--   geom_label_repel( -->
-<!--     aes(label = ifelse(rank(PC1)<10,rownames(variates),'')), -->
-<!--     col = 'darkorange', -->
-<!--     fontface = 'bold', -->
-<!--     box.padding = unit(0.35, "lines"), -->
-<!--     point.padding = unit(0.5, "lines"), -->
-<!--     segment.color = 'grey50' -->
-<!--   ) -->
-<!-- ## if filtering necessary -->
-<!-- # outlier.cells = c('A7','A5','A6', 'A8', 'A9') -->
-<!-- ## Were the A row's conditions different? -->
-<!-- ``` -->
-<!-- ```{r, eval=F} -->
-<!-- spls.rna.hvw  = spls(Y=t(logcounts(rna.sce)), X=t(counts(hvw.sce)), ncomp = 2, keepX = c(50,50), keepY= c(50,50), mode = "canonical") -->
-<!-- spls.rna.hvw.overlap  = spls(Y=t(logcounts(rna.sce)), X=t(counts(hvw.overlap.sce)), ncomp = 2, keepX = c(50,50), keepY= c(50,50), mode = "canonical") -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- plotIndiv(spls.rna.hvw) -->
-<!-- plotIndiv(spls.rna.hvw.overlap) -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- ## the data points for methylation data represents a binned window -->
-<!-- plotVar(spls.rna.hvw, legend = T, title = paste0('Correlation Circle Plots - Transcriptome (Y) against Methylation \n of the binned ',as.integer(bin.width/1000),' kb windows (X)'), pch= c(16,17), col= color.mixo(c(5,1))) -->
-<!-- ## the data points for methylation data represents a 3kb window -->
-<!-- plotVar(spls.rna.hvw.overlap, legend = T, title = paste0('Correlation Circle Plots - Transcriptome (Y) against Methylation \n of the unbiased ',as.integer(bin.width/1000),' kb windows (X)'), pch= c(16,17), col= color.mixo(c(5,1))) -->
-<!-- ``` -->
-<!-- Negative correlation between RNAseq and Methylation in 3kb window data. -->
-<!-- ```{r, echo=F} -->
-<!-- if(io$save.RData){ -->
-<!--   save.name = paste0('scMT_met_', Sys.info()['user'],'_',format(Sys.Date(), format='%y%m%d'), '.RData') -->
-<!--   save.image(file = file.path(io$RData,save.name)) -->
-<!-- } -->
-<!-- ``` -->
+<div id="using-top-30-genes-from-each-dataset" class="section level4">
+<h4><span class="header-section-number">3.2.1.3</span> using top 30% genes from each dataset:</h4>
+<pre class="sourceCode r"><code class="sourceCode r">top_pct =<span class="st"> </span><span class="fl">0.3</span> <span class="co">## all genes</span>
+nzv =<span class="st"> </span><span class="ot">TRUE</span>
+
+spls_name =<span class="st"> </span><span class="kw">splsName</span>(top_pct)
+<span class="kw">top_pct_spls</span>(top_pct,<span class="dt">Spls_name =</span> spls_name, <span class="dt">NZV =</span> nzv)</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spls_plot</span>(<span class="kw">get</span>(spls_name), <span class="dt">pars =</span> par_plot)</code></pre>
+<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-4.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-5.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-6.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-7.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-8.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-9.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-10.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-11.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-12.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-13.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-14.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-15.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-66-16.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">source</span>(<span class="st">&#39;utils/spls_plot.R&#39;</span>)
+png_name =<span class="st"> </span><span class="kw">str_c</span>(<span class="st">&#39;../output/png/plotVar_gbody_transcriptome_top_&#39;</span>, top_pct<span class="op">*</span><span class="dv">100</span>, <span class="st">&#39;_pct_genes_from_each.png&#39;</span> )
+<span class="kw">png</span>(<span class="dt">filename =</span> png_name, <span class="dt">height =</span> <span class="dv">700</span>, <span class="dt">width =</span> <span class="dv">700</span><span class="op">/</span><span class="fl">0.8</span>)
+<span class="kw">spls_plot</span>(<span class="kw">get</span>(spls_name), <span class="dt">pars =</span> par_plot[<span class="dv">1</span><span class="op">:</span><span class="dv">2</span>,],<span class="dt">plots =</span> <span class="st">&#39;plotVar&#39;</span>)
+<span class="kw">dev.off</span>()</code></pre>
 
 <div id="refs" class="references">
 <div>
 <p>Lun, Aaron T.L., Davis J. McCarthy, and John C. Marioni. 2018. “A Step-by-Step Workflow for Low-Level Analysis of Single-Cell Rna-Seq Data with Bioconductor.” <em>F1000Research</em> 5 (2122). <a href="https://doi.org/10.12688/f1000research.9501.2">https://doi.org/10.12688/f1000research.9501.2</a>.</p>
+</div>
+</div>
 </div>
 </div>
 </div>
