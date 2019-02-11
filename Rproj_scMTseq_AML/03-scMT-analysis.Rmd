@@ -1,0 +1,245 @@
+--- 
+title: 'scMTseq Analysis'
+author: 'Al J Abadi'
+date: '`r Sys.Date()`'
+bibliography:
+- packages.bib
+- citations.bib
+---
+
+```{r setup-3, include=F}
+source('utils/params.R')
+source('utils/spls_wrapper.R')
+source('utils/corr_mt.R')
+source('utils/spls_plot.R')
+source('utils/block_spls_plot.R')
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+## using R file to store params for ease of adjustment across Rmd files
+## libraries
+suppressPackageStartupMessages(library(mixOmics)) 
+suppressPackageStartupMessages(library(SingleCellExperiment)) ## sc assays
+suppressPackageStartupMessages(library(data.table)) ## to use data.tables
+suppressPackageStartupMessages(library(scran)) ## for sc analysis
+suppressPackageStartupMessages(library(ggplot2)); theme_set(theme_bw()) ## well...
+suppressPackageStartupMessages(library(gridExtra)) ## to plot a grid pf pca plots
+suppressPackageStartupMessages(library(grid)) ## to plot a grid pf pca plots
+suppressPackageStartupMessages(library(umap)) ## for dimension reduction
+suppressPackageStartupMessages(library(magrittr)) ## for pipe operator
+suppressPackageStartupMessages(library(latex2exp)) ## for v_hat and r_bar labels
+suppressPackageStartupMessages(library(stringr)) ## to use str_c for directories
+```
+
+
+# scM&T-seq analysis
+
+```{r}
+load(file.path(params$RData,'rna_qc.RData'))
+load(file.path(params$RData,'met_sces.RData'))
+```
+
+```{r}
+## find the common cells in both studies
+cell.intersect = Reduce(intersect, list(colnames(sce_genebody), colnames(rna_qc)))
+length(cell.intersect)
+
+## keep only matching cells
+rna_match = rna_qc[,colnames(rna_qc) %in% cell.intersect]
+```
+
+## Correlation
+
+```{r, eval=!params$load.RData}
+## gene-wise pearson correlation of methylation and expression for top `top_prop` proportion of
+## common genes b/w the two datasets based on their weighted variance in methylation datasets
+## stored in rowData(met_sces)
+## plus
+## the global correlation of biological and total variance b/w meth. and expression for all genes in metadata(met_sce)
+
+pearson_runtime = system.time({ ## 90 sec
+  met_sces = grep('sce_', ls(), value=TRUE)
+  for (i in met_sces){
+    assign(i, corr_mt(rna_match, get(i), top_prop = 0.3) )
+  }
+})
+pearson_runtime %<>% .[1] %>% unname() %>% round()
+save(list = c(met_sces, 'pearson_runtime'), file = file.path(params$RData,'met_sces.RData'))
+```
+```{r, eval=params$load.RData}
+met_sces = grep('sce_', ls(), value=TRUE)
+load(file.path(params$RData,'met_sces.RData'))
+```
+
+### Pearson correlation study of methylation rate and expression - gene wise
+
+```{r, ech=FALSE}
+## function to create boxplot of pearson correlations of M&T
+## for all sces
+boxPlot = function(sces = met_sces, n_top = NULL, subTitle = 'top variable genes based on $\\hat{\\nu}$' ){
+  factor_sces = NULL
+  corr = NULL
+  for (i in sces){
+    
+    n = ifelse(is.null(n_top),
+               dim(get(i))[1], 
+               min(n_top, dim(get(i))[1]))
+    
+    factor_sces = c(factor_sces, rep(i, n))
+    corr = c(corr,rowData(get(i)[1:n,])$corr_rna)
+  }
+  
+  p = ggplot(data = NULL, aes(x = factor_sces , y=corr, fill = factor(factor_sces))) + 
+    geom_boxplot(na.rm = TRUE) + coord_flip() +
+    labs(x = '', y = 'Pearson correlation', 
+         title = 'Gene-wise correlation of methylation and transcription', subtitle = TeX(subTitle)) +
+    guides(fill=FALSE)
+  return(p)
+  }
+```
+```{r}
+## Pearson correlation boxplots
+boxPlot(sces = met_sces, n_top = NULL, subTitle = 'top 30% variable genes based on $\\hat{\\nu}$' )
+```
+
+###  Does the variation in methylation in genebody correlates with variation in expression?
+
+```{r}
+## initialise a data.frame to store the pearson correlation of total and biological variance...
+## b/w expression and each methylation dataset
+var_corr = data.frame(matrix(nrow = length(met_sces),ncol = 2),
+                      row.names = met_sces )
+colnames(var_corr) = c('total', 'biological')
+
+## calculate them
+for (i in met_sces){
+  var_corr[i,] = c(metadata(get(i))$corr_var_tot_wtd_by_cov[1],
+                   metadata(get(i))$corr_var_bio_wtd_by_cov[1])
+}
+## plot
+ggplot() + geom_col(aes(factor(rownames(var_corr)),var_corr$total, fill = factor(rownames(var_corr))), shape=23, size=4) + guides(fill=FALSE) +
+  labs(x = 'Genomic Context', y= 'Pearson correlation', title = 'Correlation of total transcrption variance \n and weighted methylation variance') + coord_cartesian(ylim = c(-0.3, 0.3))
+
+ggplot() + geom_col(aes(factor(rownames(var_corr)),var_corr$bio, fill = factor(rownames(var_corr))), shape=23, size=4) + guides(fill=FALSE) +
+  labs(x = 'Genomic Context', y= 'Pearson correlation', title = 'Correlation of decomposed biological transcrption variance \n and weighted methylation variance')+ coord_cartesian(ylim = c(-0.3, 0.3))
+
+```
+Non-CGI promoters have the highest correlation magnititude and show positive correlation when total variance is used, and negative when biological is considered.
+
+## Canonical correlation study 
+
+```{r}
+## dataset parameters for plot
+## first one will be taken as Y, the rest X's
+## all that are in the sPLS list + RNA
+par_plot = data.frame(row.names = c('rna_match', 'sce_genebody', 'sce_prom', 'sce_prom_cgi', 'sce_prom_noncgi' ),
+                      label = c('Transcriptome','Genebody', 'Promoter', 'Promoter (CGI)', 'Promoter (non-CGI)'),
+                      shape =c(17, 19, 15, 18, 8), ## shapes for corr circ plots
+                      col = color.mixo(c(1, 2, 4, 5, 8))) ## colors for corr circ plots
+```
+
+### Trascriptome - Promoter Methylome
+<!--PICKUP-->
+```{r}
+## spls for all methylation data against transcriptome
+## function for spls using top x% variable genes from each dataset
+top_pct_spls = function(Top_pct = top_pct, ## portion of top genes
+                        Spls_name = NULL,## name of the spls list
+                        NZV = nzv ){ ## near-zero-variance in data?
+  if(is.null(Spls_name)) {Spls_name = paste0('spls_all_top_', Top_pct*100,"pct")}
+  
+  assign(Spls_name,
+       spls_wrapper(x=2:5, block = FALSE, top_x = Top_pct, top_y = Top_pct, near_zer_var = NZV))
+  save(list=c(Spls_name), file=stringr::str_c(params$RData,'/',Spls_name,'.RData' ))
+  return(Spls_name)
+}
+
+## function to create spls object name
+splsName = function(Top_pct = top_pct) {spls_name = paste0('spls_all_top_', Top_pct*100,"pct")}
+```
+
+#### All genes
+
+```{r, eval=!params$load.RData}
+top_pct = 1 ## all genes
+nzv = TRUE
+
+spls_name = splsName(top_pct)
+top_pct_spls(top_pct,Spls_name = spls_name, NZV = nzv)
+```
+
+```{r, echo=FALSE, eval=params$load.RData}
+top_pct = 1
+spls_name = splsName(top_pct)
+load(str_c(params$RData,'/', spls_name, '.RData'))
+```
+
+
+```{r, fig.asp = params$fig_asp}
+source('utils/spls_plot.R')
+spls_plot(get(spls_name), pars = par_plot)
+```
+
+```{r, eval=FALSE}
+source('utils/spls_plot.R')
+png(filename = '../output/png/plotVar_gbody_transcriptome_all_genes.png',height = 700, width = 700/0.8 )
+spls_plot(spls_all, pars = par_plot[1:2,],plots = 'plotVar')
+dev.off()
+```
+
+#### using top 50% genes from each dataset:
+
+```{r, eval=!params$load.RData}
+top_pct = 0.5 ## all genes
+nzv = TRUE
+
+spls_name = splsName(top_pct)
+top_pct_spls(top_pct,Spls_name = spls_name, NZV = nzv)
+```
+
+```{r, echo=FALSE, eval=params$load.RData}
+top_pct = 0.5
+spls_name = splsName(top_pct)
+load(str_c(params$RData,'/', spls_name, '.RData'))
+```
+
+
+```{r, fig.asp = params$fig_asp}
+spls_plot(get(spls_name), pars = par_plot)
+```
+
+```{r, fig.asp = params$fig_asp, eval=FALSE}
+source('utils/spls_plot.R')
+png_name = str_c('../output/png/plotVar_gbody_transcriptome_top_', top_pct*100, '_pct_genes_from_each.png' )
+png(filename = png_name, height = 700, width = 700/0.8)
+spls_plot(get(spls_name), pars = par_plot[1:2,],plots = 'plotVar')
+dev.off()
+```
+
+#### using top 30% genes from each dataset:
+
+```{r, eval=!params$load.RData}
+top_pct = 0.3 ## all genes
+nzv = TRUE
+
+spls_name = splsName(top_pct)
+top_pct_spls(top_pct,Spls_name = spls_name, NZV = nzv)
+```
+
+```{r, echo=FALSE, eval=params$load.RData}
+top_pct = 0.3
+spls_name = splsName(top_pct)
+load(str_c(params$RData,'/', spls_name, '.RData'))
+```
+
+
+```{r, fig.asp = params$fig_asp}
+spls_plot(get(spls_name), pars = par_plot)
+```
+
+```{r, fig.asp = params$fig_asp, eval=FALSE}
+source('utils/spls_plot.R')
+png_name = str_c('../output/png/plotVar_gbody_transcriptome_top_', top_pct*100, '_pct_genes_from_each.png' )
+png(filename = png_name, height = 700, width = 700/0.8)
+spls_plot(get(spls_name), pars = par_plot[1:2,],plots = 'plotVar')
+dev.off()
+```
