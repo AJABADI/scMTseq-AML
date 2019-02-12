@@ -1,0 +1,373 @@
+--- 
+title: 'scMTseq of AML cells - scRNAseq Analysis'
+author: 'Al J Abadi'
+date: '`r Sys.Date()`'
+bibliography:
+- packages.bib
+- citations.bib
+
+output:
+  
+  bookdown::gitbook:
+    includes:
+      in_header: codefold.html
+      
+      
+description: 'Joint methylation and transcriptome sequencing of AML cells'
+---
+
+```{r, echo=FALSE, cache=FALSE}
+source('utils/params.R')
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+## using R file to store params for ease of adjustment across Rmd files
+source('utils/plot.pca.R')
+source('utils/name.cells.by.wells.R')
+source('utils/myDistinctColors.R')
+
+load(file.path(params$RData,'methylation.cell.names.RData')) ## name of the matching cells
+```
+
+```{r, cache=FALSE, eval=!params$eval, echo=FALSE}
+load(file.path(params$RData,'01-scRNAseq-processing.RData'))
+```
+
+# scRNA-seq Data
+
+```{r}
+## libraries
+suppressPackageStartupMessages(library(mixOmics))
+suppressPackageStartupMessages(library(SingleCellExperiment))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(scran))
+suppressPackageStartupMessages(library(scater))
+suppressPackageStartupMessages(library(Rtsne))
+suppressPackageStartupMessages(library(ggplot2)); theme_set(theme_bw())
+suppressPackageStartupMessages(library(ggrepel))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(umap))
+suppressPackageStartupMessages(library(magrittr))
+```
+
+## Load Raw Data
+
+```{r tablecounts}
+# system.time({
+        ##  user  system elapsed 
+        ## 1.025   0.068   1.152 
+## read raw scRNAseq counts
+counts.raw = read.csv(io$rna_file)
+## create rownames using the first column
+rownames(counts.raw) = counts.raw[,1]
+## remove the 'id' column
+counts.raw = counts.raw[,-1]
+head(colnames(counts.raw))
+## change the cell names based on well names
+colnames(counts.raw) = name.cells.by.wells(colnames(counts.raw), pos.in.string = 'middle')
+head(colnames(counts.raw))
+## create sce object from raw counts
+rna.sce = SingleCellExperiment(assays = list(counts = as.matrix(counts.raw)))
+rna.sce.match = rna.sce[,met.cellnames] ## matching cells
+# })
+```
+
+## Preprocessing
+
+### QC metrics
+
+```{r qc}
+## add QC metrics
+rna.sce = scater::calculateQCMetrics(rna.sce)
+```
+
+#### cell QC
+
+look at the histograms of library sizes and the number of genes expressed by each cell:
+
+```{r}
+## look at the histograms of lib. sizes and the number of genes expressed by each cell
+par(mfrow=c(1,2))
+hist(rna.sce$total_counts/1e6, xlab='Library sizes (millions)', main='',
+    breaks=20, col='grey80', ylab='Number of cells')
+hist(rna.sce$total_features_by_counts, xlab='Number of expressed genes', main='',
+    breaks=20, col='grey80', ylab='Number of cells')
+```
+
+Create a list of cell QC metrics:
+
+```{r}
+## keep a record of lower limit cells
+cell.qc = list()
+
+## qc metric based on lib size
+tot.counts = rna.sce$total_counts
+names(tot.counts) = colnames(rna.sce)
+tot.counts = tot.counts[order(tot.counts)] ## from least to most
+libsize = list()
+libsize$rank = rank(tot.counts)
+libsize$ratio2median = tot.counts/median(tot.counts)
+cell.qc$libsize = libsize
+
+## qc metric based on gene expression
+genes.expressed.ratio2median = rna.sce$total_features_by_counts/median(rna.sce$total_features_by_counts)
+names(genes.expressed.ratio2median) = colnames(rna.sce)
+genes.expressed.ratio2median %>% .[order(.)] ## from least to most
+cell.qc$gene.expressed.ratio2median = genes.expressed.ratio2median
+```
+
+Which cells are more than 3.5 median absolute deviations less than the median log library size / number of genes expressed?:
+
+```{r}
+libsize.drop <- isOutlier(rna.sce$total_counts, nmads=3.5, type='lower', log=TRUE)
+colnames(rna.sce)[libsize.drop] ## the cells with low library size
+feature.drop <- isOutlier(rna.sce$total_features_by_counts, nmads=3.5, type='lower', log=TRUE)
+colnames(rna.sce)[feature.drop] ## the cells with low number of expressed genes > NULL
+```
+
+For each cell, we look at number of genes expressed vs library size (ratio to the median for both):
+
+```{r}
+## cells
+df4ggplot = data.frame(libsize = libsize$ratio2median,
+                genes.expressed = genes.expressed.ratio2median[names(libsize$ratio2median)])
+## keep a record of lower quality cells for future reference
+
+rank.threshold = 5 ## the rank threshold on library size and gene expression
+
+df4ggplot$lower.quality = with(df4ggplot, rank(libsize)<rank.threshold |
+                           rank(genes.expressed)<rank.threshold)
+
+ggplot(df4ggplot, aes(x = libsize, y = genes.expressed)) +
+  geom_point(size = 3, col=color.mixo(1)) + 
+  labs(x = 'Library Size / median' , y=' Number of genes expressed /median', title = '# of genes expressed against library size for all cells. \n cells on lower limits are labelled for downstream reference') +
+   theme(plot.title = element_text(hjust = 0.5)) +
+  geom_label_repel(
+    aes(label = ifelse(lower.quality,rownames(df4ggplot),'')),
+    col = 'darkorange',
+    fontface = 'bold',
+    box.padding = unit(0.35, 'lines'),
+    point.padding = unit(0.5, 'lines'),
+    segment.color = 'grey50'
+  )
+```
+
+No cells are filtered at this stage. We will assess **A3** and **E8** further downstream.
+
+#### gene filtering
+
+We require genes to have:
+  + non-zero library size
+  + be expressed/detected in at least 5% of cells
+
+```{r}
+gene.metrics = as.data.frame(rowData(rna.sce)) ## a data.frame of gene metrics
+gene.metrics$pass <- gene.metrics$total_counts!=0 & gene.metrics$pct_dropout_by_counts<params$max.cell.dropout*100
+sum(gene.metrics$pass) ## number of genes after this filter: 15K
+```
+
+To also filter out noisy genes with high rate of dropouts, we usually look at the library size histogram and put a threshold between the two peaks to the left of where the fitted curve plateaues [@stepbystep].
+
+<!-- This can be mathematically calculated by fitting a mixture model (gamma normal maybe?) to the curve and calculating the minimum between the two maxima. -->
+
+```{r}
+## choose a min log lib size threshold
+min.libsize = log10(4) ## must be chosen based on the following hisogram
+## look at only those which passed total lib size filtering and cell dropout filtering
+log.mean.counts = gene.metrics$log10_mean_counts
+## see if you're filtering the first peak of non-zero values
+hist = hist(log.mean.counts[log.mean.counts>0], prob=TRUE, breaks = 100, col = 'grey80',
+            main= 'Histogram of log10 mean gene counts / library sizes', xlab = 'log10[mean counts] for each gene')
+abline(v = min.libsize, col = 'darkorange', lwd=2)
+```
+
+Based on the histogam above, `r min.libsize` is chosen as minimum gene library size.
+
+<!-- ```{r, eval=FALSE, echo=FALSE, purl = F} -->
+<!-- ## fit a Guassian mixture model (k=2) -->
+<!-- fit = mixtools::normalmixEM(log10libsize, mu = c(0.2, 1.4), k=2) -->
+<!-- ## define the density function -->
+<!-- dens.fun = function(x, fit=fit){ -->
+<!-- fit$lambda[1]*dnorm(x, fit$mu[1], fit$sigma[1]) + -->
+<!-- fit$lambda[2]*dnorm(x, fit$mu[2], fit$sigma[2]) -->
+<!-- } -->
+<!-- ## plot -->
+<!-- curve( expr = fit$lambda[1]*dnorm(x, fit$mu[1], fit$sigma[1]) + -->
+<!--          fit$lambda[2]*dnorm(x, fit$mu[2], fit$sigma[2]), 0, (fit$mu[2] + 3*fit$sigma[2])) -->
+<!-- ## get the maximum and the local minimum -->
+<!-- ymax = optimize(f = function(x) (dens(x,fit=fit)),interval = c(-10,10), maximum = T) -->
+<!-- ymin = optimize(f = function(x) (dens(x,fit=fit)),interval = c(ymax$maximum,0.7), maximum = F) -->
+<!-- ``` -->
+
+```{r}
+gene.metrics$pass[gene.metrics$pass] <- gene.metrics$log10_mean_counts[
+  gene.metrics$pass]>=params$min.gene.libsize
+sum(gene.metrics$pass) ## number of genes after this filter: 10.7K
+```
+
+```{r}
+rna_qc = rna.sce[gene.metrics$pass,] ## filter genes
+```
+```{r}
+dim(rna_qc) ## 10778    78
+```
+
+## Normalisation
+
+### scran
+
+```{r normplotscran}
+## use scran to pool cells based on gene expression similarity and calculate size factors
+system.time({
+  ##    user  system elapsed 
+   ## 0.366   0.027   0.435 
+rna_qc = computeSumFactors(rna_qc)
+## normalise using calculated size factors
+rna_qc = normalize(rna_qc)
+})
+```
+```{r, fig.cap='Size factors from deconvolution, plotted against library sizes for all cells. Axes are shown on a log-scale. Since we have similar cell types (and not much DE genes) we expect to see less scatter around the trend line, whcih is the case in this plot.'}
+## size factors summary
+# summary(sizeFactors(rna_qc))
+plot(sizeFactors(rna_qc), rna_qc$total_counts/1e3, log='xy', pch=16, col='purple',
+    ylab='Library size (thousands)', xlab='Size factor', main = 'Scran Size Factors')
+```
+
+
+## Dimension reduction - filtered genes
+
+### PCA
+
+```{r}
+## scran
+pca.res = pca(t(logcounts(rna_qc)), ncomp = 5)
+```
+
+```{r,out.width='100%'}
+rnaseq.only = colnames(rna_qc)[! colnames(rna_qc) %in% met.cellnames]
+pca.grid(pca.obj = pca.res, diff.samples = rnaseq.only)
+```
+
+```{r,out.width='100%'}
+## invesigating whether there are technical effects by wells:
+source('utils/pca.well.R')
+pca.well(pca.res, PCs=c(1,2))
+pca.well(pca.res, PCs=c(2,3))
+```
+
+There does not seems to be a grouping by well rows from PCA plots.
+
+### Variation
+
+Since there are technical factors that can affect capture efficiency (such as GC content for Illumina sequencing, PCR amplification noise etc), for the studies that use HVGs, we need to ensure that are gene selection is based on biological variance.
+
+
+#### variance decomposition method
+
+By fitting a mean-depndent *loess* curve to variance - **log** expression (which makes it more robust to outliers).
+
+The fitted value of this trend represents technical variability due to sequencing, drop-outs during capture, etc. at a given mean.
+
+#### How is biological variance determined?
+
+Details can be found [here](https://github.com/MarioniLab/scran/blob/master/R/trendVar.R) and [here](https://github.com/LTLA/HVGDetection2018).
+
+#### decompose variance
+
+```{r}
+## function to decompose variance for sce and return results as rowData(sce)
+var.decomp = function(sce=rna_qc){
+  fit <- trendVar(sce, method='loess', use.spikes=FALSE)  ## fit a mean-dependent loess to variance
+  decomp <- as.data.frame(decomposeVar(sce, fit)) ## decompose variance to technical and biological
+  decomp$trend.var <- fit$trend(fit$means) ## add the fitted variance column
+  rowData(sce) %<>%  cbind(.,decomp) ## add to rowData(sce)
+  sce %<>% .[order(-rowData(.)$bio),] ## order by bio variance
+  
+  return(sce)
+}
+```
+```{r}
+## decompose variance
+rna_qc %<>% var.decomp(.)
+```
+
+```{r}
+par(mfrow=c(1,2))
+row_data =  rna_qc %>% rowData() %>% as.data.frame() ## a data.frame of rowData
+## total variance (fold change compared to mean) vs log mean
+ggplot(row_data) + geom_point(aes(x= mean, y=total, col = FDR), show.legend = TRUE) +
+  scale_colour_gradientn(colors = c('#027009', '#aebc31'), name = 'FDR') +
+  geom_line(aes(x=mean, y = trend.var, fill = 'Fitted trend'),  size=2) +
+  scale_fill_manual('', values = c(6), guide=guide_legend(override.aes = list(color=c('black')))) +
+  labs(x='mean log expression', y = 'total variance', title = ' total variance vs log mean expression for filtered genes')
+
+## inferred biological variance (fold change compared to mean) vs log mean
+ggplot(row_data) + geom_point(aes(x= mean, y=bio, col=FDR), show.legend = TRUE) +
+  scale_colour_gradientn(colors = c('#027009', '#aebc31'), name = 'FDR') +
+  labs(x='mean log expression', y = 'biological variance',
+       title = ' biological variation vs log mean expression for filtered genes')
+```
+
+##### Pearson's *r*
+
+```{r}
+## hierarchical clustering using HVGs
+hvgs = rownames(rna_qc[1:params$rna.78cells.hvgs,])
+plotHeatmap(rna_qc[hvgs,], features = hvgs, clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation', main = paste0( 'Clustered heatmap of scRNAseq data with ',params$rna.78cells.hvgs, ' HVGs only \n using Pearson correlation \n cells at the bottom and genes on the side'))
+```
+
+
+## Dimension reduction - HVGs
+
+### PCA using HVGS
+
+The first 2 PCs now contain ~ 13% of variation, compared to 5% which was before
+
+```{r}
+pca.hvgs.res = pca(t(logcounts(rna_qc[hvgs,])), ncomp = 5)
+```
+
+```{r,out.width='100%'}
+pca.grid(pca.obj = pca.hvgs.res, diff.samples = rnaseq.only)
+```
+
+### tSNE does not identify clear clusters
+
+```{r,out.width='100%',  fig.asp=0.5}
+par(mfrow=c(1,2))
+set.seed(12321)
+sce.hvg.tsne = Rtsne(t(logcounts(rna_qc[hvgs,])), perplexity = 10)
+```
+```{r,fig.cap= 'tSNE plots using HVGs'}
+plot(sce.hvg.tsne$Y, main = 'tSNE - Perplexity = 10', pch=colnames(rna_qc),
+     col=factor(substr(colnames(rna_qc),0,1)), xlab = 'tSNE-1', ylab='tSNE-2')
+```
+
+
+### UMAP does not identify clear clusters
+
+```{r}
+## UMAP on scran-normalised
+sce.hvg.umap = umap(t(logcounts(rna_qc[hvgs,])))
+```
+```{r, fig.cap='UMAP plot using HVGs colored by wells'}
+plot(sce.hvg.umap$layout, main = 'UMAP using HVGs', pch=rownames(sce.hvg.umap$layout),
+     col=factor(substr(rownames(sce.hvg.umap$layout),0,1)), xlab = 'umap-1', ylab='umap-2' )
+```
+
+
+```{r, eval=params$save.RData, echo=FALSE}
+if(io$save.RData){
+  save.name = paste0('scMT_RNA_', Sys.info()['user'],'_',format(Sys.Date(), format='%y%m%d'), '.RData')
+  save.image(file = file.path(params$RData,save.name))
+  save(rna_qc, file = file.path(params$RData,'rna_qc.RData'))
+}
+```
+```{r,  eval=params$save.RData, echo=FALSE}
+save.image(file=file.path(params$RData,'01-scRNAseq-Analysis.RData'))
+save(rna_qc, file  = file.path(params$RData,'rna_qc.RData'))
+```
+
+
+
