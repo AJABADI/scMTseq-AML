@@ -1,9 +1,14 @@
 ## function to calculate weighted mean and variance and return as rowData(sce)$wtd__var and $wtd_mean
 
-wtd_var = function(sce=sce, x_assay = "rates", w_assay = "weights", cov = 0){
+wtd_var = function(sce=sce, x_assay = "rates", w_assay = "weights", cov=NULL){
   
-  ## filter by coverage
-  sce = sce[rowSums(is.na(assay(sce, x_assay)))/dim(sce)[2]>= cov,]
+  if(!is.null(cov)){ ## if filtering by coverage desired
+    ## add cell coverage as rowData
+    rowData(sce)$cov = rowSums(!is.na(rates))/ncol(rates)
+    
+    ## filter by coverage
+    sce %<>% .[rowData(.)$cov>=cov,]
+  }
   x = assay(sce, x_assay)
   w = assay(sce, w_assay)
   w_var = w_mean <- numeric()
@@ -14,7 +19,7 @@ wtd_var = function(sce=sce, x_assay = "rates", w_assay = "weights", cov = 0){
       w_mean[i] = wtd.mean(x = x[i,], weights = w[i,], na.rm = TRUE)
     }
   })
-  ## NA variance is 
+  ## add to rowData
   rowData(sce)$wtd_var = w_var
   rowData(sce)$wtd_mean = w_mean
   sce = sce[order(rowData(sce)$wtd_var, decreasing = TRUE, na.last = TRUE),]
