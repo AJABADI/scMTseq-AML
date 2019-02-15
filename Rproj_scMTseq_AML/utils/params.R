@@ -56,6 +56,7 @@ stopifnot(all(
 ))
 #################### 02-scBSseq PARAMETERS
 params_03= list(
+  scale = FALSE, ## scale datasets?
   fig_asp = 0.7 ## spls plot aspect ratios
 )
 ####################
