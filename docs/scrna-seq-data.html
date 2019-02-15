@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2019-02-11">
+<meta name="date" content="2019-02-12">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -230,7 +230,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
         <span class="co">##  user  system elapsed </span>
         <span class="co">## 1.025   0.068   1.152 </span>
 <span class="co">## read raw scRNAseq counts</span>
-counts.raw =<span class="st"> </span><span class="kw">read.csv</span>(io<span class="op">$</span>rna_file)
+counts.raw =<span class="st"> </span><span class="kw">read.csv</span>(params<span class="op">$</span>rna_file)
 <span class="co">## create rownames using the first column</span>
 <span class="kw">rownames</span>(counts.raw) =<span class="st"> </span>counts.raw[,<span class="dv">1</span>]
 <span class="co">## remove the &#39;id&#39; column</span>

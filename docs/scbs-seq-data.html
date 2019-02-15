@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2019-02-11">
+<meta name="date" content="2019-02-12">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -214,7 +214,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div id="data-1" class="section level2">
 <h2><span class="header-section-number">2.1</span> Data</h2>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## load the methylation data</span>
-met =<span class="st"> </span><span class="kw">fread</span>(io<span class="op">$</span>met_1bp_out)
+met =<span class="st"> </span><span class="kw">fread</span>(params<span class="op">$</span>met_1bp_out)
 <span class="kw">unique</span>(met<span class="op">$</span>anno) <span class="co">## all annotations</span>
 <span class="co">## look at sample names</span>
 <span class="kw">head</span>(<span class="kw">unique</span>(met<span class="op">$</span>sample), <span class="dv">2</span>)
@@ -246,6 +246,15 @@ annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&
 <span class="co">## tabulate metadata</span>
 <span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">metadata</span>(<span class="kw">get</span>(x))<span class="op">$</span>gene_stats}) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">lapply</span>(., cbind) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">as.data.frame</span>() <span class="op">%&gt;%</span><span class="st"> </span>kableExtra<span class="op">::</span><span class="kw">kable</span>(., <span class="dt">caption =</span> <span class="st">&#39;Number of genes in each dataset before and after filtering by coverage&#39;</span>)</code></pre>
+<table>
+<caption>
+<span id="tab:unnamed-chunk-38">Table 2.1: </span>Number of genes in each dataset before and after filtering by coverage
+</caption>
+<tbody>
+<tr>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="variance" class="section level2">
 <h2><span class="header-section-number">2.4</span> Variance</h2>
@@ -256,9 +265,8 @@ annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&
 <span class="st">    </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="kw">TeX</span>(<span class="st">&#39;$</span><span class="ch">\\</span><span class="st">bar{r}$&#39;</span>), <span class="dt">y=</span><span class="kw">TeX</span>(<span class="st">&#39;$</span><span class="ch">\\</span><span class="st">hat{</span><span class="ch">\\</span><span class="st">nu}$&#39;</span>),<span class="dt">title =</span> annot)
 }</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co">## plot all vhat ~ rbar</span>
-<span class="kw">par</span>(<span class="dt">mfrow=</span><span class="kw">c</span>(<span class="kw">ceiling</span>(<span class="kw">length</span>(annots)<span class="op">/</span><span class="dv">2</span>),<span class="dv">2</span>))
+annots =<span class="st"> </span><span class="kw">grep</span>(<span class="st">&#39;sce_&#39;</span>, <span class="kw">ls</span>(), <span class="dt">value=</span><span class="ot">TRUE</span>)
 <span class="kw">lapply</span>(annots, <span class="cf">function</span>(x){<span class="kw">rv_plot</span>(<span class="kw">get</span>(x), x)})</code></pre>
-<p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-40-4.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="dimension-reduction" class="section level2">
 <h2><span class="header-section-number">2.5</span> Dimension reduction</h2>
@@ -287,7 +295,7 @@ pca_met =<span class="st"> </span><span class="cf">function</span>(<span class="
   <span class="kw">save</span>(pca_out, <span class="dt">file=</span><span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;pca_out.RData&#39;</span>)
 <span class="er">}</span>)</code></pre>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">file.path</span>(params<span class="op">$</span>RData,<span class="st">&#39;pca_out.RData&#39;</span>))</code></pre>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lapply</span>(pca_out, <span class="cf">function</span>(x){<span class="kw">pca.grid</span>(x, <span class="dt">top =</span> x<span class="op">$</span>anno, <span class="dt">point.label =</span> <span class="ot">TRUE</span>)})</code></pre>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">lapply</span>(pca_out, <span class="cf">function</span>(x){<span class="kw">pca.grid</span>(x, <span class="dt">top =</span> <span class="kw">paste0</span>(x<span class="op">$</span>anno, <span class="st">&quot; - &quot;</span>, params<span class="op">$</span>hvgs_pca,<span class="st">&quot; genes&quot;</span>), <span class="dt">point.label =</span> <span class="ot">TRUE</span>)})</code></pre>
 <p><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-1.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-2.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-3.png" width="672" style="display: block; margin: auto;" /><img src="scMTseq_of_AML_cells_files/figure-html/unnamed-chunk-44-4.png" width="672" style="display: block; margin: auto;" />
 ## Weighted PCA?</p>
 <!--

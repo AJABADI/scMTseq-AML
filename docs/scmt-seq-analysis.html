@@ -25,7 +25,7 @@
 <meta name="author" content="Al J Abadi">
 
 
-<meta name="date" content="2019-02-11">
+<meta name="date" content="2019-02-12">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -307,7 +307,7 @@ top_pct_spls =<span class="st"> </span><span class="cf">function</span>(<span cl
   <span class="cf">if</span>(<span class="kw">is.null</span>(Spls_name)) {Spls_name =<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&#39;spls_all_top_&#39;</span>, Top_pct<span class="op">*</span><span class="dv">100</span>,<span class="st">&quot;pct&quot;</span>)}
   
   <span class="kw">assign</span>(Spls_name,
-       <span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>, <span class="dt">top_x =</span> Top_pct, <span class="dt">top_y =</span> Top_pct, <span class="dt">near_zer_var =</span> NZV))
+       <span class="kw">spls_wrapper</span>(<span class="dt">x=</span><span class="dv">2</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">block =</span> <span class="ot">FALSE</span>, <span class="dt">scale =</span> params<span class="op">$</span>scale, <span class="dt">top_x =</span> Top_pct, <span class="dt">top_y =</span> Top_pct, <span class="dt">near_zer_var =</span> NZV))
   <span class="kw">save</span>(<span class="dt">list=</span><span class="kw">c</span>(Spls_name), <span class="dt">file=</span>stringr<span class="op">::</span><span class="kw">str_c</span>(params<span class="op">$</span>RData,<span class="st">&#39;/&#39;</span>,Spls_name,<span class="st">&#39;.RData&#39;</span> ))
   <span class="kw">return</span>(Spls_name)
 }
