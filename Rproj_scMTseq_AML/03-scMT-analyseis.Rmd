@@ -1,0 +1,17 @@
+--- 
+title: "scMTseq Aaalysis"
+author: "Al J Abadi"
+date: "`r Sys.Date()`"
+bibliography:
+- packages.bib
+- citations.bib
+---
+
+```{r setup-3, include=F}
+knitr::opts_chunk$set(cache=T, cache.comment=F, fig.align = 'center')
+## using R file to store params for ease of adjustment across Rmd files
+source('utils/params.R')
+```
+
+# scM&T-seq analysis
+

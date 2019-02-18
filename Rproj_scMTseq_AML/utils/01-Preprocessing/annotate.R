@@ -64,7 +64,7 @@ args <- p$parse_args(commandArgs(TRUE))
 ####################
 
 args <- list()
-args$context <- "CG"
+args$context <- "GC"
 args$cores <- 2
 
 io <- list()
@@ -77,48 +77,48 @@ opts$contex <- toupper(opts$context)
 stopifnot(opts$context %in% c("CG","GC"))
 
 ## Own computer ##
-# if (grepl("Al",Sys.info()['nodename'])) { ## if my own computer
-  io$basedir <- "../data/scBSseq" ## base IO directory
+if (grepl("Al",Sys.info()['nodename'])) { ## if my own computer
+  io$basedir <- "./data/scBS-seq" ## base IO directory
   io$anno.folder <- str_c(io$basedir,"/filt") ## annotation folder (.bed)
-  # io$in.sample_metadata <- str_c(io$basedir,"/sample_sheet.csv")
+  io$in.sample_metadata <- str_c(io$basedir,"/sample_sheet.csv")
   # io$in.sample_metadata <- str_c(io$basedir,"/sample_info_all.txt")
   
   # GC
-  # if (opts$context == "GC") {
-  #   io$in.folder <- str_c(io$basedir,"/bismark")
-  #   # io$in.folder <- str_c(io$basedir,"/acc/raw/filtered/unstranded/binarised")
-  #   io$out.folder <- str_c(io$basedir,"/acc/parsed")
-  #   # CG
-  # } else if (opts$context=="CG") {
-    io$in.folder <- str_c(io$basedir,"/met/raw/bismark")
+  if (opts$context == "GC") {
+    io$in.folder <- str_c(io$basedir,"/bismark")
+    # io$in.folder <- str_c(io$basedir,"/acc/raw/filtered/unstranded/binarised")
+    io$out.folder <- str_c(io$basedir,"/acc/parsed")
+    # CG
+  } else if (opts$context=="CG") {
+    io$in.folder <- str_c(io$basedir,"/bismark")
     # io$in.folder <- str_c(io$basedir,"/met/raw/filtered/unstranded/binarised")
     io$out.folder <- str_c(io$basedir,"/met/parsed")
-  # }
+  }
   
   ## Cluster ##
-# } else {
-#   stop()
+} else {
+  stop()
   # io$basedir <- "/hps/nobackup/stegle/users/ricard/NMT-seq"
   # io$anno.folder <- str_c(io$basedir,"/features/filt")
   # io$in.sample_metadata <- str_c(io$basedir,"/sample_info_all.txt")
   
   # GC
-  # if (opts$context == "GC") {
-  #   # io$in.folder <- str_c(io$basedir,"/acc/raw/filtered/unstranded/binarised")
-  #   # io$out.folder <- str_c(io$basedir,"/acc/parsed")
-  #   # CG
-  # } else if (opts$context=="CG") {
+  if (opts$context == "GC") {
+    # io$in.folder <- str_c(io$basedir,"/acc/raw/filtered/unstranded/binarised")
+    # io$out.folder <- str_c(io$basedir,"/acc/parsed")
+    # CG
+  } else if (opts$context=="CG") {
     # opts$sep <- "\t"
-    # # io$in.folder <- str_c(io$basedir,"/met/raw/filtered/unstranded/binarised")
+    # io$in.folder <- str_c(io$basedir,"/met/raw/filtered/unstranded/binarised")
     # io$out.folder <- str_c(io$basedir,"/met/parsed")
-#   }
-# }
+  }
+}
 
 
 ## Options ##
 
 ## Valid chromosomes
-opts$chr_list <- c(1:22) ## what are they?
+opts$chr_list <- c(1:22,"X","Y") ## what are they?
 
 # Annotations to analyse
 opts$annos <- "all"
@@ -140,15 +140,15 @@ cat("\n")
 ###############
 
 # Load samples to be kept
-# if (opts$context=="CG") {
+if (opts$context=="CG") {
   # samples_keep <- fread(io$in.sample_metadata, header=T) %>% .[pass_metQC==T,sample]
   samples_keep <- sapply(str_split(list.files(io$in.folder, pattern = "\\.cov$"),"\\.cov"),"[[", 1)
-# } else if (opts$context=="GC") {
-#   # samples_keep <- fread(io$in.sample_metadata, header=T) %>% .[pass_accQC==T,sample]
-#   samples_keep <- sapply(str_split(list.files(io$in.folder, pattern = "\\.cov$"),"\\.cov"),"[[", 1)
-# } else{
-#   stop()
-# }
+} else if (opts$context=="GC") {
+  # samples_keep <- fread(io$in.sample_metadata, header=T) %>% .[pass_accQC==T,sample]
+  samples_keep <- sapply(str_split(list.files(io$in.folder, pattern = "\\.cov$"),"\\.cov"),"[[", 1)
+} else{
+  stop()
+}
 stopifnot(all(!duplicated(samples_keep)))
 
 cat(sprintf("- Processing samples: %s\n",str_c(samples_keep, collapse=" ")))
@@ -167,8 +167,7 @@ for (i in 1:length(opts$annos)) {
 
   # Read annotation file
   anno.file <- sprintf("%s/%s.bed",io$anno.folder,opts$anno[i])
-  ## read the annotation file which is tab delimited and keep 
-  dat_anno <- fread(anno.file ,sep="\t", header=F, verbose=F) %>% .[,-6] %>% 
+  dat_anno <- fread(anno.file ,sep="\t", header=F, select=c(1,2,3,4,5), verbose=F) %>% 
     setnames(c("chr","start","end","strand","id"))
   
   # Check that there are no weird chromosomes
@@ -177,32 +176,6 @@ for (i in 1:length(opts$annos)) {
 names(anno_list) <- opts$anno
 
 
-#########################################
-## Create a n-kb window annotation ##
-#########################################
-library(BSgenome.Hsapiens.UCSC.hg38)
-chr_length = seqlengths(Hsapiens) %>% .[1:23]
-### user input
-all_window_length = c(1000,3000,5000)
-opts$wins = sapply(all_window_length, function(x) paste0("window", substr(as.character(x),0,1),"kb"))
-# opts$wins = c("window1kb", "window3kb", "window5kb")
-### why in window3k.RData the windows jump at times? Are they non-accessible regions?
-
-for (i in 1:length(all_window_length)){
-  window_length = all_window_length[i]
-  windows = data.table()
-  for (j in 1:length(chr_length)){
-    total_w = floor(chr_length[j]/window_length)
-    dt = data.table(start = seq(from = 0, by = window_length, length.out = total_w))
-    dt[,`:=`(chr=j, end = start+3000, id = paste0("chr_",j,"_", seq(1,total_w,1) ))]
-    dt %<>% .[,c("chr", "start", "end", "id")]
-    windows = rbind(windows, dt)
-  }
-  windows %<>% setkey(chr,start,end) 
-  assign(paste0("anno_",opts$wins[i]), windows)
-}
-
-# assign(paste0("window", substring(as.character(3000),0,1), "kb"), windows)
 
 #########################################
 ## Preprocess and annotate the samples ##
@@ -222,7 +195,7 @@ for (i in 1:length(samples_keep)) {
   } else {
     cat(sprintf("Sample %s has not been processed, annotating...\n",sample))  
     
-    # Read and parse raw methylation data (cov files)
+    # Read and parse raw methylation data
     dat_sample <- fread(paste0(io$in.folder,'/',sample, '.cov'), sep="\t", header="auto", verbose=F, showProgress=F)
     dat_sample <- dat_sample[,1:4] ## only keep chr, start, end and rate
     ## no need for these as the cov files already have start and end
@@ -231,11 +204,9 @@ for (i in 1:length(samples_keep)) {
           # # Add 'start' and 'end' columns to do the overlap
           # dat_sample <- dat_sample[,c("start","end") := list(pos,pos)][,pos:=NULL] %>% .[,chr:=as.factor(chr)] %>% setkey(chr,start,end)
     colnames(dat_sample) <- c("chr","start","end","rate")
-    ############# must set key for foverlaps - keys are the ones that are overlapped ########
-     dat_sample %<>% .[,chr:=as.factor(chr)] %>% setkey(chr,start,end)
-    
+    ## must set key for foverlaps - keys are the ones that are overlapped
+    dat_sample <- dat_sample %>% .[,chr:=as.factor(chr)] %>% setkey(chr,start,end)
     # Overlap data with annotations
-    
     for (anno in opts$anno) {
       fname.out <- sprintf("%s/tmp/%s_%s.tsv",io$out.folder,sample,anno)
       if (file.exists(paste0(fname.out,".gz"))) {
@@ -243,9 +214,8 @@ for (i in 1:length(samples_keep)) {
       } else {
         cat(sprintf("Annotating %s with %s annotations...\n",sample,anno))
         
-        # Overlap - genomic context
-        ov <- foverlaps(dat_sample, anno_list[[anno]], nomatch=0) %>% 
-          .[,"i.end":=NULL] %>% setnames("i.start","pos") ## remove the duplicate end column and rename  i.start to pos
+        # Overlap
+        ov <- foverlaps(dat_sample, anno_list[[anno]], nomatch=0) %>% .[,"i.end":=NULL] %>% setnames("i.start","pos")
         
         # Calculate methylation status for each region in the annotation by summarising over all sites
         # out <- ov[,c("sample","anno") := list(sample,anno)] %>% .[,.(rate=round(mean(rate)*100), weight=.N), keyby=.(sample,id,anno)]
@@ -255,28 +225,6 @@ for (i in 1:length(samples_keep)) {
         fwrite(out, fname.out, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
       }
     }
-    ######################## Windows
-    
-    for (anno in paste0("anno_", opts$wins)) {
-      fname.out <- sprintf("%s/tmp/%s_%s.tsv",io$out.folder,sample,anno)
-      if (file.exists(paste0(fname.out,".gz"))) {
-        cat(sprintf("Annotation for %s with %s already found, loading...\n",sample,anno))
-      } else {
-        cat(sprintf("Annotating %s with %s annotations...\n",sample,anno))
-        
-        # Overlap - genomic context
-        ov <- foverlaps(dat_sample, get(anno), nomatch=0) %>% ## overlap them an don't retun anything if there's no match
-          .[,"i.end":=NULL] %>% setnames("i.start","pos") ## remove the duplicate end column and rename  i.start to pos
-  
-        # Calculate methylation status for each region in the annotation by summarising over all sites
-        # out <- ov[,c("sample","anno") := list(sample,anno)] %>% .[,.(rate=round(mean(rate)*100), weight=.N), keyby=.(sample,id,anno)]
-        out <- ov[,c("sample","anno") := list(sample,anno)] %>% .[,.(rate=round(mean(rate)), weight=.N), keyby=.(sample,id,anno)]
-        
-        # Store and save results
-        fwrite(out, fname.out, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
-      }
-    }
-    ######################## Windows
   }
 }#)
 

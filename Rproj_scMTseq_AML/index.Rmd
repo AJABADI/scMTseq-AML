@@ -9,19 +9,13 @@ site: bookdown::bookdown_site
 documentclass: book
 biblio-style: apalike
 link-citations: no
-output:
-  bookdown::gitbook:
-    keep_md: false
-    includes:
-      in_header: codefold.html
 description: "Joint methylation and transcriptome sequencing of AML cells"
 ---
 
 ```{r setup-0, include=F}
-source('utils/params.R')
-knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
-                      message=FALSE, warning=FALSE, results='hide')
+knitr::opts_chunk$set(cache=T, cache.comment=F, fig.align = 'center')
 ## using R file to store params for ease of adjustment across Rmd files
+source('utils/params.R')
 ```
 
 # Data {-}
@@ -29,23 +23,23 @@ knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE
 Data from Dr Heather Lee lab from The University of Newcastle. 
 
 
-<!-- The cells are from the Kasumi-1 AML cell line. Cell identifiers are given by a letter (indicating plate row), and a number (indicating plate column), e.g. *_A7_*, *_C10_*. -->
+The cells are from the Kasumi-1 AML cell line. Cell identifiers are given by a letter (indicating plate row), and a number (indicating plate column), e.g. *_A7_*, *_C10_*.
 
 
-<!-- +  **scRNA-seq Data** -->
++  **scRNA-seq Data**
 
-<!-- Count matrices which are quality controlled. -->
+Count matrices which are quality controlled.
 
 
-<!-- +  **scBS-seq Data** -->
++  **scBS-seq Data**
 
-<!-- Each .cov file in which each line is a cytosine residue, and the columns are as follows: -->
-<!-- <chromosome>  <position>  <strand>  <count methylated>  <count unmethylated>  <C-context> <trinucleotide context> -->
-<!-- These reports are produced by Bismark. The functional element is ill defined. Sometimes we look at promoters, sometimes enhancers, sometimes unbiased - occasionally overlapping - 3kb windows to ensure minimisation of missed genomic features. -->
+Each .cov file in which each line is a cytosine residue, and the columns are as follows:
+<chromosome>  <position>  <strand>  <count methylated>  <count unmethylated>  <C-context> <trinucleotide context>
+These reports are produced by Bismark. The functional element is ill defined. Sometimes we look at promoters, sometimes enhancers, sometimes unbiased - occasionally overlapping - 3kb windows to ensure minimisation of missed genomic features.
 
-<!-- 40 cells amcth those from RNA-seq. -->
+40 cells amcth those from RNA-seq.
 
-```{r,eval=params$eval, echo=params$echo}
+```{r}
 ## update as needed.
 ## installing the required packages for this analysis, if necessary
 required.pkgs = c('mixOmics','SingleCellExperiment','scran','data.table',
@@ -56,7 +50,7 @@ required.pkgs = c('mixOmics','SingleCellExperiment','scran','data.table',
                   )
 ```
 
-```{r,eval=params$eval, echo=params$echo}
+```{r}
 ## make sure Biocmanager is installed
 if (!requireNamespace('BiocManager', quietly = T)){
   paste('Trying to install BiocManager')
@@ -64,7 +58,7 @@ if (!requireNamespace('BiocManager', quietly = T)){
 }
 ```
 
-```{r, eval=params$eval, echo=params$echo, results='hide', warning=F, message=F}
+```{r, results='hide', warning=F, message=F}
 ## package installer function - for those not already installed
 package.installer = function(pkgs=required.pkgs){
   for (package in pkgs){
@@ -97,7 +91,7 @@ package.installer(required.pkgs)
 <!--   io$RData = params$RData ## save rdata -->
 <!-- ``` -->
 
-```{r, echo=F}
+```{r}
 ## check for validity of inputs
 stopifnot(file.exists(io$rna_file), !io$use.parsed||file.exists(io$met_1bp_out), io$use.parsed||file.exists(io$bedfiles))
 ## for reproducibility
