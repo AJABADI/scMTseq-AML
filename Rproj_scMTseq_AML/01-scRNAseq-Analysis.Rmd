@@ -58,7 +58,7 @@ suppressPackageStartupMessages(library(magrittr))
         ##  user  system elapsed 
         ## 1.025   0.068   1.152 
 ## read raw scRNAseq counts
-counts.raw = read.csv(io$rna_file)
+counts.raw = read.csv(params$rna_file)
 ## create rownames using the first column
 rownames(counts.raw) = counts.raw[,1]
 ## remove the 'id' column
@@ -358,7 +358,7 @@ plot(sce.hvg.umap$layout, main = 'UMAP using HVGs', pch=rownames(sce.hvg.umap$la
 
 
 ```{r, eval=params$save.RData, echo=FALSE}
-if(io$save.RData){
+if(params$save.RData){
   save.name = paste0('scMT_RNA_', Sys.info()['user'],'_',format(Sys.Date(), format='%y%m%d'), '.RData')
   save.image(file = file.path(params$RData,save.name))
   save(rna_qc, file = file.path(params$RData,'rna_qc.RData'))

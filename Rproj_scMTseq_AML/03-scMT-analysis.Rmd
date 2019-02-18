@@ -38,7 +38,7 @@ load(file.path(params$RData,'rna_qc.RData'))
 load(file.path(params$RData,'met_sces.RData'))
 ```
 
-```{r}
+```{r, eval=!params$load.RData}
 ## find the common cells in both studies
 cell.intersect = Reduce(intersect, list(colnames(sce_genebody), colnames(rna_qc)))
 length(cell.intersect)
@@ -137,18 +137,19 @@ par_plot = data.frame(row.names = c('rna_match', 'sce_genebody', 'sce_prom', 'sc
                       col = color.mixo(c(1, 2, 4, 5, 8))) ## colors for corr circ plots
 ```
 
-### Trascriptome - Promoter Methylome
+### Trascriptome - Promoter Methylome - Scaled
 <!--PICKUP-->
 ```{r}
 ## spls for all methylation data against transcriptome
 ## function for spls using top x% variable genes from each dataset
 top_pct_spls = function(Top_pct = top_pct, ## portion of top genes
                         Spls_name = NULL,## name of the spls list
+                        scale = TRUE,
                         NZV = nzv ){ ## near-zero-variance in data?
   if(is.null(Spls_name)) {Spls_name = paste0('spls_all_top_', Top_pct*100,"pct")}
   
   assign(Spls_name,
-       spls_wrapper(x=2:5, block = FALSE, top_x = Top_pct, top_y = Top_pct, near_zer_var = NZV))
+       spls_wrapper(x=2:5, block = FALSE, scale = scale, top_x = Top_pct, top_y = Top_pct, near_zer_var = NZV))
   save(list=c(Spls_name), file=stringr::str_c(params$RData,'/',Spls_name,'.RData' ))
   return(Spls_name)
 }
@@ -243,3 +244,30 @@ png(filename = png_name, height = 700, width = 700/0.8)
 spls_plot(get(spls_name), pars = par_plot[1:2,],plots = 'plotVar')
 dev.off()
 ```
+
+### Trascriptome - Promoter Methylome - Not Scaled
+
+
+#### All genes
+
+```{r, eval=!params$load.RData}
+top_pct = 1 ## all genes
+nzv = TRUE
+
+spls_name = "spls_all_genes_not_scaled"
+# spls_name = splsName(top_pct)
+top_pct_spls(top_pct,Spls_name = spls_name, scale = FALSE, NZV = nzv)
+```
+
+```{r, echo=FALSE, eval=params$load.RData}
+top_pct = 1
+spls_name = splsName(top_pct)
+load(str_c(params$RData,'/', spls_name, '.RData'))
+```
+
+
+```{r, fig.asp = params$fig_asp}
+source('utils/spls_plot.R')
+spls_plot(get(spls_name), pars = par_plot)
+```
+

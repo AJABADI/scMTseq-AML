@@ -1,133 +1,154 @@
 --- 
-title: "scMTseq of AML cells - scBS-seq processing"
-author: "Al J Abadi"
-date: "`r Sys.Date()`"
+title: 'scMTseq of AML cells - scBS-seq processing'
+author: 'Al J Abadi'
+date: '`r Sys.Date()`'
 bibliography:
 - packages.bib
 - citations.bib
 ---
 
-```{r setup-2, include=F}
-knitr::opts_chunk$set(cache=T, cache.comment=F, fig.align = 'center')
-## using R file to store params for ease of adjustment across Rmd files
+
+```{r setup-2, include=F, echo= params$echo, cache=FALSE}
+# load('02-met.RData')
 source('utils/params.R')
+source('utils/plot.pca.R')
+source('utils/met_sce.R')
+knitr::opts_chunk$set(cache=!params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+## using R file to store params for ease of adjustment across Rmd files
 
 ## libraries
 suppressPackageStartupMessages(library(mixOmics))
 suppressPackageStartupMessages(library(SingleCellExperiment))
 suppressPackageStartupMessages(library(data.table))
-suppressPackageStartupMessages(library(scran))
-suppressPackageStartupMessages(library(scater))
-suppressPackageStartupMessages(library(DESeq2))
-suppressPackageStartupMessages(library(edgeR))
-suppressPackageStartupMessages(library(Rtsne))
 suppressPackageStartupMessages(library(ggplot2)); theme_set(theme_bw())
+suppressPackageStartupMessages(library(ggforce))
 suppressPackageStartupMessages(library(ggrepel))
 suppressPackageStartupMessages(library(gridExtra))
 suppressPackageStartupMessages(library(grid))
 suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(Hmisc))
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(latex2exp))
 ```
 
 # scBS-seq Data
 
-## Methylation and RNAseq
+40 cells matching RNA-seq data
 
-```{r}
-# load(file.path(io$outdir,save.name))
-# system.time({
-     ## user  system elapsed 
-     ## 4.890   0.830   4.893 
-## choose sce.rna.scran as default rna sce
-## HVGs will be considred based on methylation later
-load(file.path(io$RData,'sce.rna.scran.RData'))
-rna.sce = sce.rna.scran
+## Data
+```{r, eval=!params$eval, echo=FALSE}
+load(file.path(params$RData,'02-met.RData'))
+```
 
+```{r, eval=!params$load.RData}
 ## load the methylation data
-met = fread(io$met_1bp_out)
-annos = unique(met$anno) ## get annotations
+met = fread(params$met_1bp_out)
+unique(met$anno) ## all annotations
+## look at sample names
+head(unique(met$sample), 2)
 ## keep only the well number as the sample name
-# unique(met$sample)
 ## the following code is fast but only works if the well names are 2 character long and at the beginning on the string
 ## if wells such as A12 are present (with 3 or more characters) the function name.cells.by.wells should be called
 met$sample = substr(met$sample,0,2)
-
-length(unique(met$sample))
-length(colnames(rna.sce))
-## find the common cells in both studies
-cell.intersect = Reduce(intersect, list(unique(met$sample), colnames(rna.sce)))
-length(cell.intersect)
-
-## keep only common cells
-met = met[sample %in% cell.intersect]
-rna.sce = rna.sce[,colnames(rna.sce) %in% cell.intersect]
-
-## create a data.table of rates and weights where genes are rows and samples are columns for each annotation
-
-# for (i in annos[c(1,4)]){ ## only genebody and promoter for now
-#   ## create the rate matrix for each annotation
-#   assign(paste0('met.',i,'.rate'),
-#          dcast(met[anno==i], id~sample, value.var = 'rate'))
-# 
-#   ## create the weight matrix for each annotation
-#   assign(paste0('met.',i,'.weight'),
-#          dcast(met[anno==i], id~sample, value.var = 'weight'))
-# 
-# }
-
-## methylation in genebody
-met.genebody.rate = dcast(met[anno=='genebody'], id~sample, value.var = 'rate')
-rownames(met.genebody.rate) = met.genebody.rate$id
-met.genebody.rate$id = NULL
-
-## methylation in promoters
-met.prom.rate = dcast(met[anno=='prom'], id~sample, value.var = 'rate')
-rownames(met.prom.rate) = met.prom.rate$id
-met.prom.rate$id = NULL
-
-## create sce from genebody and promoter methylation data
-met.gene.sce = SingleCellExperiment(assays = list(counts = as.matrix(met.genebody.rate)))
-met.prom.sce = SingleCellExperiment(assays = list(counts = as.matrix(met.prom.rate)))
-# })
+length(unique(met$sample)) ## 40
+met =met[anno!='intergenic'] ## #TODO drop intergenic for now
 ```
 
-### Filtering NAs
+## Create sce
+
+```{r, eval=!params$load.RData}
+## from each annotation (genebody, promoter etc) in methylation file, create a sce object
+## which includes the weighted mean methylation rate (rbar) and weighted methylation variance (vhat)
+## plus the coverage of the gene in rowData(sce), filter by coverage and record the changes in dim(sce)
+## after filtering in metadata(sce)
+
+system.time({ ## 19 sec
+  for (i in unique(met$anno) ) {
+    assign(paste0('sce_',i), met_sce(met=met, annot = i, cov = params$cov.cutoff))
+  }
+})
+```
+```{r, echo=FALSE, eval=params$save.RData}
+save(list=grep('sce_', ls(), value = TRUE), file = file.path(params$RData,'met_sces.RData'))
+```
+
+```{r, eval=params$load.RData}
+load(file.path(params$RData,'met_sces.RData'))
+```
+
+## Summary
+
+```{r, results='hold'}
+## get all annotations
+annots = grep('sce_', ls(), value=TRUE)
+## tabulate metadata
+lapply(annots, function(x){metadata(get(x))$gene_stats}) %>%
+  lapply(., cbind) %>% as.data.frame() %>% kableExtra::kable(., caption = 'Number of genes in each dataset before and after filtering by coverage')
+```
+
+
+## Variance
 
 ```{r}
-## How many NAs in each gene? Out of 40 cells
-metNAs.gene = rowSums(is.na(counts(met.gene.sce)))
-metNAs.prom = rowSums(is.na(counts(met.prom.sce)))
-hist(metNAs.gene, main = 'histogram of NAs for all genes - gene body', xlab = 'Number of NA cells')
-hist(metNAs.prom, main = 'histogram of NAs for all genes - promoter', xlab = 'Number of NA cells')
+rv_plot = function(sce = sce_genebody, annot = 'Gene Body Methylation'){
+  rowdat = sce %>% rowData() %>% as.data.frame()
+  ggplot(rowdat, aes(x=rbar, y=vhat, col = cov)) + 
+    geom_point() + guides(col=guide_legend('Coverage')) +
+    labs(x=TeX('$\\bar{r}$'), y=TeX('$\\hat{\\nu}$'),title = annot)
+}
 ```
-The promoter methylation data contain much more NAs, as expected.
+```{r}
+## plot all vhat ~ rbar
+annots = grep('sce_', ls(), value=TRUE)
+lapply(annots, function(x){rv_plot(get(x), x)})
+```
+
+## Dimension reduction
+
+Because of large number of NA's, dimension reduction cannot be trusted for now.
+
+```{r, eval=!params$load.RData}
+## pca function
+## sce: sce with 'rates' assay
+## ncomp: integer, number of comps to get
+## hvgs: NULL or number of hvgs to keep based on rowData(sce)$vhat
+pca_met = function(sce = 'sce_genebody', ncomp = 2, n_hvgs = NULL){
+  rates = assay(get(sce), 'rates')
+  if (!is.null(n_hvgs)){
+    if(n_hvgs>=dim(get(sce))[1]){
+      message('number of genes <= hvgs; all genes used')
+    } else{
+      rates = rates[1:n_hvgs,]
+    }
+  }
+  out = pca(t(rates), ncomp = ncomp)
+  out$anno = gsub('sce_','', sce)
+  return(out)
+}
+```
+
+```{r, eval=FALSE}
+n_hvgs = params$hvgs_pca
+## maximum number of components reaches for some comps
+system.time({ ## 562 sec for ncomp=3, nhvgs =2000
+  pca_out = lapply(annots, function(x){pca_met(x,ncomp = 3, n_hvgs =n_hvgs)})
+  save(pca_out, file=file.path(params$RData,'pca_out.RData')
+})
+```
+```{r, eval=TRUE}
+load(file.path(params$RData,'pca_out.RData'))
+```
+
 
 ```{r}
-NA.threshold=20 ## number of cells having NA values
-## filter those with number of NAs more than NA.threshold
-met.gene.sce.filt_NAs = met.gene.sce[names(metNAs.gene[metNAs.gene<=NA.threshold]),]
-met.prom.sce.filt_NAs = met.prom.sce[names(metNAs.prom[metNAs.prom<=NA.threshold]),]
-## number of genes/cells in filtered SCEs
-dim(met.gene.sce.filt_NAs)
-dim(met.prom.sce.filt_NAs)
+lapply(pca_out, function(x){pca.grid(x, top = paste0(x$anno, " - ", params$hvgs_pca," genes"), point.label = TRUE)})
 ```
+## Weighted PCA?
 
-### HVGs in Methylation Data
-
-```{r, warning=F}
-source('utils/calc.cv.R')
-n.met.hvgs = 500
-genebody.exp.smry = calc.cv(counts(met.gene.sce.filt_NAs), mean.expr.cutoff = 0, n.hvgs = n.met.hvgs, mean.quant = 0, type = 'Genebody Methylation Rate')
-genebody.exp.smry$plot.cv
-met.hvgs.gene = rownames(genebody.exp.smry$expr.smry)[1:n.met.hvgs]
-
-prom.exp.smry = calc.cv(counts(met.prom.sce.filt_NAs), mean.expr.cutoff = 0, n.hvgs = n.met.hvgs, mean.quant = 0, type = 'Promoter Methylation Rate')
-prom.exp.smry$plot.cv
-met.hvgs.prom = rownames(prom.exp.smry$expr.smry)[1:n.met.hvgs]
-## HVGs for genebody
-met.gene.sce.filt_NAs.hvg = met.gene.sce.filt_NAs[met.hvgs.gene,]
-
-## HVGs for promoters
-met.prom.sce.filt_NAs.hvg = met.prom.sce.filt_NAs[met.hvgs.prom,]
+```{r, eval=params$save.RData, echo=FALSE}
+save.image(file.path(params$RData,'02-met.RData'))
 ```
 
 <!--
@@ -135,185 +156,8 @@ impute using DeepCpG and plot the heatmaps:
 
 ```{r, eval=F}
 ## hclust and heatmap for genebody methylation
-plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs.hvg), exprs_values = "counts", zlim = c(0,100),
+plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs.hvg), exprs_values = 'counts', zlim = c(0,100),
             clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation')
 ```
 -->
-
-### sPLS - Gene Body
-
-```{r}
-spls.rna.gene  = spls(X=t(counts(met.gene.sce.filt_NAs.hvg )), Y=t(logcounts(rna.sce)), ncomp = 2, keepX = c(50,50), keepY= c(50,50), mode = "canonical")
-```
-
-```{r}
-plotVar(spls.rna.gene, legend=T, pch=c(16,17), title = 'Correlation Circle Plots - Transcriptome (Y) against gene body methylation (X) \n No NA filtering', col= color.mixo(c(2,1)))
-```
-
-A negative correlation between RNAseq and Methylation data is apparent, while the opoposite is also true at for some latent variables. 
-
-### sPLS - Promoter
-
-```{r}
-spls.rna.prom = spls(X=t(counts(met.prom.sce.filt_NAs.hvg )), Y=t(logcounts(rna.sce)), ncomp = 2, keepX = c(50,50), keepY= c(50,50), mode = "canonical")
-```
-
-```{r}
-plotVar(spls.rna.prom, legend=T, pch=c(20,17), title = 'Correlation Circle Plots - Transcriptome (Y) against gene promoter methylation (X) \n No NA filtering', col= color.mixo(c(4,1)))
-```
-
-There are a lot more *NaN*s in promoter data than in gene body, which is why there are some data points outside the circles.
-
-### Block sPLS
-
-```{r}
-## transcriptome (Y) against gene body and promoter methylation data (X)
-block.spls  = block.spls(X = list(gene.met = t(counts(met.prom.sce.filt_NAs.hvg)),prom.met = t(counts(met.gene.sce.filt_NAs.hvg))), Y = t(logcounts(rna.sce)), ncomp = 2, keepX = list(gene.met =c(5,50), prom.met =c(5,50)), keepY= c(50,50), mode = "canonical")
-```
-
-```{r}
-plotVar(block.spls, legend = T, title = 'Correlation Circle Plots - Transcriptome against Methylation', pch = c(16,20,17), col= color.mixo(c(2,4,1)))
-```
-
-## 3kb Windows
-
-<!--
-Add the option to re-summarise the methylation data here:
-if(!io$use.parsed){
-
-} else {
-
-}
--->
-```{r}
-
-system.time({
- ##   user  system elapsed 
- ## 18.916   5.696  36.746
-window3kb = fread(io$met_3kb)
-})
-
-system.time({
-          ##  user  system elapsed 
-          ## 4.073   2.501   7.482 
-## create a 'bin' variable
-## using 1e5 bins made it too uniform, i.e. meth. rate ~0.75
-## sticking with the 3kb window
-bin.width  =3e3
-## I have not differentiated between forward and backward strand, to be checked with Heather
-## [Al] also, some windows overlap - this should be considered later on (weighted ovrlapping)
-window3kb[,bin:=ceiling(start/bin.width)]
-
-## dropping all columns except for rates and bin
-window3kb = window3kb[, grepl('rate', colnames(window3kb))|
-                        grepl('bin', colnames(window3kb)), with=F]
-## remove every column name that matches 'var' - rate variance data
-window3kb = window3kb[,!grepl('var', colnames(window3kb)), with=F]
-dim(window3kb) # 1923673      41
-source('utils/name.cells.by.wells.R')
-colnames(window3kb) = name.cells.by.wells(colnames(window3kb), pos.in.string = 'first')
-## create a 'weight' variable for the number of observations in each bin
-## [Al] although, what also matters is the number of times each cell has been covered in total
-window3kb = window3kb[,weight:=.N, by = bin]
- #   user  system elapsed 
- # 22.470  15.497  54.818 
-
-## average over bins and disregard NAs- weights will remain the same so not excluded
-## bins with no observation for a given cell will return NaNs
-window3kb = window3kb[,lapply(.SD,mean, na.rm=TRUE), by=bin]
-dim(window3kb) ## 82981    42
-window3kb$n.NAs = rowSums(is.na(window3kb))
-hist(window3kb$n.NAs, main='histogram of number of NAs in all 3kb windows')
-## filter out NAs
-window3kb = window3kb[n.NAs<=20] ## arbitrary
-dim(window3kb) ## 74171    43
-})
-
-## plot a given cell's weight
-plot(window3kb$weight, as.matrix(window3kb[,9]), xlim = c(0,250), main= 'methylation rate at each window for a \n given cell vs the window coverage')
-## part of variation in methylation is due to dropouts, i.e. low weight
-
-## plot the boxplot of weights
-boxplot(window3kb$weight, horizontal=T)
-## filtering by weight
-## require each window to be covered at least x times
-min.weight = 20 ## arbitrary
-window3kb = window3kb[weight > min.weight]
-dim(window3kb) ##  35431    43  - for min.weight = median
-```
-
-
-```{r}
-system.time({
-    ##  user  system elapsed 
-    ## 24.462   0.207  24.994
-# ## add mean meth. rate for each bin:
-window3kb[,mean:=apply(.SD,1, mean, na.rm=TRUE ) , by=bin, .SDcols=c(2:41)]
-## checking whether there are near zero means for calculating cv
-hist(window3kb$mean, main='mean methylation rate for all cells - 3kb windows')
-min(window3kb$mean)## 0.5275498
-## so we'll calculate cv with no pseudo value at denominator
-window3kb[,sd:=apply(.SD,1, sd, na.rm=TRUE) , by=bin,.SDcols=c(2:41)]
-window3kb[,cv:=sd/mean]
-hist(window3kb$cv)
-## order by cv for highly varibale regions
-window3kb=window3kb[order(-cv)]
-## keep the top variable windows
-n.region = 5000
-window3kb.hvw=window3kb[1:n.region]
-## create SCE
-hvw.sce = SingleCellExperiment(assays = list(counts = as.matrix(window3kb.hvw[,c(2:41)])))
-})
-```
-
-### Dimension Reduction
-
-```{r}
-system.time({
-     ## user  system elapsed 
-    ## 253.382  31.798 286.293 
-# pca.met.window = pca(t(counts(hvw.sce)), ncomp = 3)
-# save(pca.met.window, file= file.path(io$RData,'pca.met.window.RData'))
-load(file.path(io$RData,'pca.met.window.RData'))
-})
-## outliers exist:
-source('utils/plot.pca.R')
-plot.pca(gg.pca = gg.pca, pca.obj = pca.met.window, top = 'PCA - methylation in variable 3kb windows')
-## find outliers
-variates =as.data.frame(pca.met.window$variates$X)
-variates.ordered = variates[order((abs(variates$PC1)+abs(variates$PC2)+abs(variates$PC3)), decreasing = T),]
-
-## plot labeled pca to find outliers
-ggplot(variates.ordered, aes(x = PC1, y = PC2)) +
-  geom_point(size = 3, col=color.mixo(1)) +
-  geom_label_repel(
-    aes(label = ifelse(rank(PC1)<10,rownames(variates),'')),
-    col = 'darkorange',
-    fontface = 'bold',
-    box.padding = unit(0.35, "lines"),
-    point.padding = unit(0.5, "lines"),
-    segment.color = 'grey50'
-  )
-## if filtering necessary
-# outlier.cells = c('A7','A5','A6', 'A8', 'A9')
-## Were the A row's conditions different? 
-```
-
-```{r}
-spls.rna.hvw  = spls(Y=t(logcounts(rna.sce)), X=t(counts(hvw.sce)), ncomp = 2, keepX = c(50,50), keepY= c(50,50), mode = "canonical")
-```
-
-```{r}
-## the data points for methylation data represents an unbaised bin
-plotVar(spls.rna.hvw, legend = T, title = paste0('Correlation Circle Plots - Transcriptome (Y) against Methylation \n of the unbiased ',as.integer(bin.width/1000),' kb windows (X)'), pch= c(16,17), col= color.mixo(c(5,1)))
-```
-
-Negative correlation between RNAseq and Methylation in 3kb window data.
-
-```{r, echo=F}
-if(io$save.RData){
-  save.name = paste0('scMT_met_', Sys.info()['user'],'_',format(Sys.Date(), format='%y%m%d'), '.RData')
-  save.image(file = file.path(io$RData,save.name))
-}
-```
 
