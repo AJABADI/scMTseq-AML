@@ -2,7 +2,7 @@
 ## transcription sce given proportion/number of top genes required in each sce
 
 spls_wrapper = function(df = par_plot, x = 3, y = 1, ncomp =2,
-                        top_x = NULL, top_y = NULL, cov = NULL, exclude=NULL,
+                        top_x = NULL, top_y = NULL, cov = NULL, exclude=NULL, weights = TRUE, scale = FALSE,
                         near_zer_var =TRUE, ## if near zero variance is expected
                         keepX=c(50,50), keepY=c(50,50), block=FALSE, mode="canonical"){
   
@@ -54,7 +54,7 @@ spls_wrapper = function(df = par_plot, x = 3, y = 1, ncomp =2,
       }
     }
 
-    out = block.spls(X=X, Y=Y,ncomp=ncomp ,keepX=keep_X, 
+    out = block.spls(X=X, Y=Y,ncomp=ncomp ,keepX=keep_X,  scale = FALSE,
                      keepY=keepY, mode=mode, near.zero.var = near_zer_var)
   } else {
     out = list()
@@ -81,7 +81,7 @@ spls_wrapper = function(df = par_plot, x = 3, y = 1, ncomp =2,
       
       X = t(assay(x_sce,"rates"))
       
-      out[[sce_name]] = spls(X=X, Y=Y,ncomp=ncomp ,keepX=keep_X, 
+      out[[sce_name]] = spls(X=X, Y=Y,ncomp=ncomp ,keepX=keep_X, scale = FALSE,
                  keepY=keepY, mode=mode, near.zero.var = near_zer_var)
     }
     
