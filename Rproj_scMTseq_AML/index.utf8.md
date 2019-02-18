@@ -1,7 +1,7 @@
 --- 
 title: "scMTseq of AML cells - pilot"
 author: "Al J Abadi"
-date: "`r Sys.Date()`"
+date: "2019-02-11"
 bibliography:
 - packages.bib
 - citations.bib
@@ -11,18 +11,12 @@ biblio-style: apalike
 link-citations: no
 output:
   bookdown::gitbook:
-    keep_md: false
     includes:
       in_header: codefold.html
 description: "Joint methylation and transcriptome sequencing of AML cells"
 ---
 
-```{r setup-0, include=F}
-source('utils/params.R')
-knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
-                      message=FALSE, warning=FALSE, results='hide')
-## using R file to store params for ease of adjustment across Rmd files
-```
+
 
 # Data {-}
 
@@ -45,7 +39,8 @@ Data from Dr Heather Lee lab from The University of Newcastle.
 
 <!-- 40 cells amcth those from RNA-seq. -->
 
-```{r,eval=params$eval, echo=params$echo}
+
+```r
 ## update as needed.
 ## installing the required packages for this analysis, if necessary
 required.pkgs = c('mixOmics','SingleCellExperiment','scran','data.table',
@@ -56,7 +51,8 @@ required.pkgs = c('mixOmics','SingleCellExperiment','scran','data.table',
                   )
 ```
 
-```{r,eval=params$eval, echo=params$echo}
+
+```r
 ## make sure Biocmanager is installed
 if (!requireNamespace('BiocManager', quietly = T)){
   paste('Trying to install BiocManager')
@@ -64,7 +60,8 @@ if (!requireNamespace('BiocManager', quietly = T)){
 }
 ```
 
-```{r, eval=params$eval, echo=params$echo, results='hide', warning=F, message=F}
+
+```r
 ## package installer function - for those not already installed
 package.installer = function(pkgs=required.pkgs){
   for (package in pkgs){
@@ -97,10 +94,5 @@ package.installer(required.pkgs)
 <!--   io$RData = params$RData ## save rdata -->
 <!-- ``` -->
 
-```{r, echo=F}
-## check for validity of inputs
-stopifnot(file.exists(io$rna_file), !io$use.parsed||file.exists(io$met_1bp_out), io$use.parsed||file.exists(io$bedfiles))
-## for reproducibility
-set.seed(1234321)
-```
+
 
