@@ -1,3 +1,5 @@
+
+
 spls_plot = function(spls_list = spls_all, ## which elements in the list?
                      pars = par_plot,
                      hide = NULL,
@@ -32,16 +34,17 @@ spls_plot = function(spls_list = spls_all, ## which elements in the list?
       
       if(hide_in_plotVar & "plotVar" %in% plots){
         plotVar(spls_obj, legend.title = "", legend = c(X_lab, Y_lab) ,pch=pch_XY,
-                col= col_XY, title ="" )
+                col= col_XY, title ="")
       }
     }
     if("plotIndiv" %in% plots){
       ## sample plot
-      plotIndiv(spls_obj, subtitle = c(X_lab, Y_lab), size.subtitle = 12)
+      plotIndiv(spls_obj, subtitle = c(X_lab, Y_lab), size.subtitle = 12, col = color.mixo(2))
+      plotIndiv(spls_obj, subtitle = c(X_lab, Y_lab), size.subtitle = 12, col = color.mixo(2), pch=16)
     }
     if("plotArrow" %in% plots){
       ## arrow plot
-      plotArrow(spls_obj, ind.names = TRUE, X.label = X_lab, Y.label = Y_lab)
+      plotArrow(spls_obj, ind.names = TRUE, X.label = X_lab, Y.label = Y_lab, col = color.mixo(2))
     }
   }
   
