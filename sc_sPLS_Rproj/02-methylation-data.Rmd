@@ -1,0 +1,163 @@
+--- 
+title: 'scMTseq of AML cells - scBS-seq processing'
+author: 'Al J Abadi'
+date: '`r Sys.Date()`'
+bibliography:
+- packages.bib
+- citations.bib
+---
+
+
+```{r setup-2, include=F, echo= params$echo, cache=FALSE}
+# load('02-met.RData')
+source('utils/params.R')
+source('utils/plot.pca.R')
+source('utils/met_sce.R')
+knitr::opts_chunk$set(cache=!params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+## using R file to store params for ease of adjustment across Rmd files
+
+## libraries
+suppressPackageStartupMessages(library(mixOmics))
+suppressPackageStartupMessages(library(SingleCellExperiment))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(ggplot2)); theme_set(theme_bw())
+suppressPackageStartupMessages(library(ggforce))
+suppressPackageStartupMessages(library(ggrepel))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(Hmisc))
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(latex2exp))
+```
+
+# scBS-seq Data
+
+40 cells matching RNA-seq data
+
+## Data
+```{r, eval=!params$eval, echo=FALSE}
+load(file.path(params$RData,'02-met.RData'))
+```
+
+```{r, eval=!params$load.RData}
+## load the methylation data
+met = fread(params$met_1bp_out)
+unique(met$anno) ## all annotations
+## look at sample names
+head(unique(met$sample), 2)
+## keep only the well number as the sample name
+## the following code is fast but only works if the well names are 2 character long and at the beginning on the string
+## if wells such as A12 are present (with 3 or more characters) the function name.cells.by.wells should be called
+met$sample = substr(met$sample,0,2)
+length(unique(met$sample)) ## 40
+met =met[anno!='intergenic'] ## #TODO drop intergenic for now
+```
+
+## Create sce
+
+```{r, eval=!params$load.RData}
+## from each annotation (genebody, promoter etc) in methylation file, create a sce object
+## which includes the weighted mean methylation rate (rbar) and weighted methylation variance (vhat)
+## plus the coverage of the gene in rowData(sce), filter by coverage and record the changes in dim(sce)
+## after filtering in metadata(sce)
+
+system.time({ ## 19 sec
+  for (i in unique(met$anno) ) {
+    assign(paste0('sce_',i), met_sce(met=met, annot = i, cov = params$cov.cutoff))
+  }
+})
+```
+```{r, echo=FALSE, eval=params$save.RData}
+save(list=grep('sce_', ls(), value = TRUE), file = file.path(params$RData,'met_sces.RData'))
+```
+
+```{r, eval=params$load.RData}
+load(file.path(params$RData,'met_sces.RData'))
+```
+
+## Summary
+
+```{r, results='hold'}
+## get all annotations
+annots = grep('sce_', ls(), value=TRUE)
+## tabulate metadata
+lapply(annots, function(x){metadata(get(x))$gene_stats}) %>%
+  lapply(., cbind) %>% as.data.frame() %>% kableExtra::kable(., caption = 'Number of genes in each dataset before and after filtering by coverage')
+```
+
+
+## Variance
+
+```{r}
+rv_plot = function(sce = sce_genebody, annot = 'Gene Body Methylation'){
+  rowdat = sce %>% rowData() %>% as.data.frame()
+  ggplot(rowdat, aes(x=rbar, y=vhat, col = cov)) + 
+    geom_point() + guides(col=guide_legend('Coverage')) +
+    labs(x=TeX('$\\bar{r}$'), y=TeX('$\\hat{\\nu}$'),title = annot)
+}
+```
+```{r}
+## plot all vhat ~ rbar
+annots = grep('sce_', ls(), value=TRUE)
+lapply(annots, function(x){rv_plot(get(x), x)})
+```
+
+## Dimension reduction
+
+Because of large number of NA's, dimension reduction cannot be trusted for now.
+
+```{r, eval=!params$load.RData}
+## pca function
+## sce: sce with 'rates' assay
+## ncomp: integer, number of comps to get
+## hvgs: NULL or number of hvgs to keep based on rowData(sce)$vhat
+pca_met = function(sce = 'sce_genebody', ncomp = 2, n_hvgs = NULL){
+  rates = assay(get(sce), 'rates')
+  if (!is.null(n_hvgs)){
+    if(n_hvgs>=dim(get(sce))[1]){
+      message('number of genes <= hvgs; all genes used')
+    } else{
+      rates = rates[1:n_hvgs,]
+    }
+  }
+  out = pca(t(rates), ncomp = ncomp)
+  out$anno = gsub('sce_','', sce)
+  return(out)
+}
+```
+
+```{r, eval=FALSE}
+n_hvgs = params$hvgs_pca
+## maximum number of components reaches for some comps
+system.time({ ## 562 sec for ncomp=3, nhvgs =2000
+  pca_out = lapply(annots, function(x){pca_met(x,ncomp = 3, n_hvgs =n_hvgs)})
+  save(pca_out, file=file.path(params$RData,'pca_out.RData')
+})
+```
+```{r, eval=TRUE}
+load(file.path(params$RData,'pca_out.RData'))
+```
+
+
+```{r}
+lapply(pca_out, function(x){pca.grid(x, top = paste0(x$anno, " - ", params$hvgs_pca," genes"), point.label = TRUE)})
+```
+## Weighted PCA?
+
+```{r, eval=params$save.RData, echo=FALSE}
+save.image(file.path(params$RData,'02-met.RData'))
+```
+
+<!--
+impute using DeepCpG and plot the heatmaps:
+
+```{r, eval=F}
+## hclust and heatmap for genebody methylation
+plotHeatmap(met.gene.sce.filt_NAs.hvg, features = rownames(met.gene.sce.filt_NAs.hvg), exprs_values = 'counts', zlim = c(0,100),
+            clutering_distance_rows = 'correlation', clutering_distance_cols = 'correlation')
+```
+-->
+

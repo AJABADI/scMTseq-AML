@@ -1,0 +1,106 @@
+--- 
+title: "scMTseq of AML cells - pilot"
+author: "Al J Abadi"
+date: "`r Sys.Date()`"
+bibliography:
+- packages.bib
+- citations.bib
+site: bookdown::bookdown_site
+documentclass: book
+biblio-style: apalike
+link-citations: no
+output:
+  bookdown::gitbook:
+    keep_md: false
+    includes:
+      in_header: codefold.html
+description: "Joint methylation and transcriptome sequencing of AML cells"
+---
+
+```{r setup-0, include=F}
+source('utils/params.R')
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+## using R file to store params for ease of adjustment across Rmd files
+```
+
+# Data {-}
+
+Data from Dr Heather Lee lab from The University of Newcastle. 
+
+
+<!-- The cells are from the Kasumi-1 AML cell line. Cell identifiers are given by a letter (indicating plate row), and a number (indicating plate column), e.g. *_A7_*, *_C10_*. -->
+
+
+<!-- +  **scRNA-seq Data** -->
+
+<!-- Count matrices which are quality controlled. -->
+
+
+<!-- +  **scBS-seq Data** -->
+
+<!-- Each .cov file in which each line is a cytosine residue, and the columns are as follows: -->
+<!-- <chromosome>  <position>  <strand>  <count methylated>  <count unmethylated>  <C-context> <trinucleotide context> -->
+<!-- These reports are produced by Bismark. The functional element is ill defined. Sometimes we look at promoters, sometimes enhancers, sometimes unbiased - occasionally overlapping - 3kb windows to ensure minimisation of missed genomic features. -->
+
+<!-- 40 cells amcth those from RNA-seq. -->
+
+```{r,eval=params$eval, echo=params$echo}
+## update as needed.
+## installing the required packages for this analysis, if necessary
+required.pkgs = c('mixOmics','SingleCellExperiment','scran','data.table',
+                  'DESeq2', 'edgeR', 'Rtsne', 'ggplot2', 'ggrepel', 'gridExtra',
+                  'grid', 'reshape2',
+                  ## for summarising
+                  'seqinr', 'stringr', 'doParallel', 'argparse'
+                  )
+```
+
+```{r,eval=params$eval, echo=params$echo}
+## make sure Biocmanager is installed
+if (!requireNamespace('BiocManager', quietly = T)){
+  paste('Trying to install BiocManager')
+  install.packages('BiocManager')
+}
+```
+
+```{r, eval=params$eval, echo=params$echo, results='hide', warning=F, message=F}
+## package installer function - for those not already installed
+package.installer = function(pkgs=required.pkgs){
+  for (package in pkgs){
+    if (!requireNamespace(package, quietly = T)){
+  paste0('Trying to install ', package)
+  BiocManager::install(package, update = F)
+    }
+    }
+}
+## run function
+package.installer(required.pkgs)
+```
+
+<!-- Activate when params are finalised and defined in YAML -->
+<!-- ```{r} -->
+<!-- ## I/O -->
+<!-- io=list() -->
+<!--   ## raw RNA data -->
+<!--   io$rna_file = params$rna_file ## '../data/scRNA-seq/raw/Kasumi1_scRNAseq_RawCounts.txt' -->
+<!--   ## raw single bp met calls folder -->
+<!--   io$met_1bp_in = params$met_1bp_in ## '../data/scBS-seq/met/1bp/raw' -->
+<!--   ## processed single bp met calls file name -->
+<!--   io$met_1bp_out = params$met_1bp_out ## '../data/scBS-seq/met/1bp/parsed/met_data.tsv' -->
+<!--   ## whether to use parsed data or (re-)parse -->
+<!--   io$use.parsed= params$use.parsed## TRUE -->
+<!--   ## 3kb windows data folder -->
+<!--   io$met_3kb = params$met_3kb ## '../data/scBS-seq/met/3kbp/raw/methylVariance-w3K-s1K5.csv' -->
+<!--   ## .bed files for summarising calls on genomic features -->
+<!--   io$bedfiles = params$bedfiles ## '../data/scBS-seq/filt' -->
+<!--   io$RData = params$RData ## save rdata -->
+<!-- ``` -->
+
+```{r, echo=F}
+## check for validity of inputs
+stopifnot(file.exists(io$rna_file), !io$use.parsed||file.exists(io$met_1bp_out), io$use.parsed||file.exists(io$bedfiles))
+## for reproducibility
+set.seed(1234321)
+```
+
