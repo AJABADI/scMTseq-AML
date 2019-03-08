@@ -1,5 +1,4 @@
 ## 14 distinct colors
-
 myDistinctColors = c("#3cb44b", ## green
                      "#000075", ## marine blue
                      "#f58231", ## orange

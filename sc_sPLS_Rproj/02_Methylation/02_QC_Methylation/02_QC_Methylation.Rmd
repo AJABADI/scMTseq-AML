@@ -1,0 +1,44 @@
+---
+title: "Methylation QC and Filtering"
+output: html_document:
+      toc: yes
+---
+
+```{r, echo=FALSE}
+## input/output setup
+io <- list()
+io$chunk$cache <- !TRUE
+io$chunk$echo <-FALSE
+
+knitr::opts_chunk$set(cache=io$chunk$cache, echo=io$chunk$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r, cache=FALSE}
+## source directory
+source_dir <- '../../utils'
+R_files <- list.files(source_dir, pattern = '.R$', full.names = TRUE) ## all files ending in .R
+invisible(lapply(R_files, base::source))
+# source("../../all_libs.R")
+suppressMessages(library(data.table))
+suppressMessages(library(stringr))
+## input and outputs files and directories
+io$basedir <- "../../../data/scBSseq"
+io$out.folder <- str_c(io$basedir,"/met/parsed")
+io$input$met_out = str_c(io$out.folder,"/met_data.tsv")
+io$input$met_w3k  <- '../../../data/scBSseq/met/parsed/methylVariance-w3K-s1K5.csv'
+## check that files exist
+check_files_exist(io$input)
+```
+
+```{r}
+##################### genomic contexts
+## load the methylation data
+met_all <- fread(io$input$met_out)
+## trim sample names to well names
+met_all$sample %<>% substring(.,0,2)
+##################### windows
+met_w3k <- fread(io$input$met_w3k)
+
+```
+

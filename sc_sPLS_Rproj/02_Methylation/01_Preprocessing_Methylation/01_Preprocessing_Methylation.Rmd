@@ -1,0 +1,307 @@
+---
+title: "Methylation Preprocessing"
+output:
+  html_document:
+      toc: yes
+---
+
+```{r, echo=FALSE}
+## input/output setup
+io <- list()
+io$chunk$cache <- !TRUE
+io$chunk$echo <-FALSE
+
+knitr::opts_chunk$set(cache=io$chunk$cache, echo=io$chunk$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide', eval=FALSE)
+```
+
+```{r, cache=FALSE}
+suppressMessages(library(data.table))
+suppressMessages(library(seqinr))
+suppressMessages(library(stringr))
+## input and outputs files and directories
+io$basedir <- "../../../data/scBSseq"
+## .bed files for overlapping genomic contexts
+io$anno.folder <- str_c(io$basedir,"/filt")
+## bismark files
+io$in.folder <- str_c(io$basedir,"/met/raw/bismark")
+io$out.folder <- str_c(io$basedir,"/met/parsed")
+io$met_out = str_c(io$out.folder,"/met_data.tsv")
+```
+```{r}
+## checks
+check_dir = function(dir,file_ext=NULL){
+   if(!dir.exists(dir)) stop('\n directory ',dir,' does not exist')
+    if(!is.null(file_ext)){
+      if(!length(list.files(dir, pattern=file_ext))) stop('\n no ',file_ext,' files found in ',dir)
+    }
+}
+check_dir(io$out.folder)
+check_dir(io$anno.folder, '.bed')
+check_dir(io$in.folder, '.cov')
+```
+
+## Processing Annotations
+
+```{r, echo=TRUE}
+opts <- list()
+## valid chromosomes
+opts$chr_list <- 1:22
+
+opts$winows$sliding$width = 3000 ## or NULL
+opts$winows$sliding$step = 600 ## or NULL
+opts$windows$tile$width <- 3000 ## or NULL
+
+## how far upstream or downstream of each context?
+
+opts$annos_offset <- c( ## NA or c(upstream,downstream) for all
+  "genebody"=NA,
+  "intergenic"=NA,
+  "prom_cgi"=list(2000,500),
+  "prom_noncgi" = list(2000,500),
+  "prom" = list(2000,500)
+)
+
+# Annotations to analyse - 'all' or names of annotation in anno.folder
+opts$annos <- "all"
+if (opts$annos == "all"){
+  opts$annos <- sapply(str_split(list.files(io$anno.folder, pattern = "\\.bed$"),"\\."),"[[", 1)
+} else {
+  opts$annos_offset <- opts$annos_offset[opts$annos]
+}
+
+## samples
+samples_keep <- sapply(str_split(list.files(io$in.folder, pattern = "\\.cov$"),"\\.cov"),"[[", 1)
+stopifnot(all(!duplicated(samples_keep)))
+```
+
+### CpG sites
+
+```{r}
+## get CpG stats for a context in $cpg_total (total number)
+## and $cpg_dens (density) columns
+library(BSgenome.Hsapiens.UCSC.hg38)## get all CpG sites
+library(GenomicRanges)
+cpg_stats = function(anno_dt, genome=Hsapiens){
+  system.time({
+    
+    seq <- out$Biostrings::getSeq(genome,
+                       names=paste0("chr",anno_dt$chr),
+                       start=anno_dt$start,
+                       end=anno_dt$end+1,
+                       strand=anno_dt$strand) ## TODO does it work with windows?
+    
+    anno_dt$cpg_total <- dinucleotideFrequency(seq)[,"CG"]
+    anno_dt$cpg_dens <- anno_dt$total_cpg/width(seq)
+  
+  })
+  return(anno_dt)
+}
+
+
+
+genomic_window <- function(genome=BSgenome.Hsapiens.UCSC.hg38,type=c("sliding","tile"), width=3000, step=600){
+
+  out <- list()
+  gr <- GRanges(seqinfo(BSgenome.Hsapiens.UCSC.hg38))
+  if("tile" %in% type){
+    out[["tile"]] <- tile(gr, width = 3000 )
+  }
+  if("sliding" %in% type){
+    out[["sliding"]] <- list()
+    for (step_i in step){
+      out[["sliding"]][[paste0("step_",step_i)]] <- slidingWindows(gr, width = width, step = step_i)
+    }
+    
+  }
+  return(out)
+}
+```
+
+```{r}
+for (i in opts$annos) {
+  ## offset
+  off_set <- opts$annos_offset[[i]]
+  # full annotation directory
+  anno.file <- list.files(io$anno.folder, pattern =paste0(i,'.bed'), full.names = TRUE)
+    dat_anno <- fread(anno.file ,sep="\t", header=F, verbose=F) %>% 
+    .[,-6] %>% 
+    setnames(c("chr","start","end","strand","id"))
+    ## offset 
+    if(!is.na(off_set)){
+      dat_anno[,start:=(start-off_set[1])]
+      dat_anno[,end:=(end+off_set[2])]
+    }
+}
+```
+
+
+```{r, eval=FALSE}
+anno_list <- list()
+# opts$annos = opts$annos[c(1,5)]
+for (i in opts$annos) {
+  # full annotation directory
+  anno.file <- list.files(io$anno.folder, pattern =paste0(i,'.bed'), full.names = TRUE)
+  ## read the annotation file which is tab delimited and keep 
+  dat_anno <- fread(anno.file ,sep="\t", header=F, verbose=F) %>% 
+    ## looks like this:
+    ##    V1     V2      V3 V4              V5       V6
+    # 1:  1 923928  944581  + ENSG00000187634 genebody
+    # 2:  1 944204  959309  - ENSG00000188976 genebody
+    # 3:  1 960587  965715  + ENSG00000187961 genebody
+    # 4:  1 966497  975865  + ENSG00000187583 genebody
+    # 5:  1 975204  982093  - ENSG00000187642 genebody
+    # 6:  1 998962 1000172  - ENSG00000188290 genebody
+    ## remove the annotation
+    .[,-6] %>% 
+    ## rename the columns
+    setnames(c("chr","start","end","strand","id"))
+  
+  #################### not sure if this is right to offset contexts - I think we look at
+  #################### operators around TSS but not around operators themselves
+  #################### keeping it just in case
+    ## offset
+
+    #   if(!is.na(opts$annos_offset[[i]])){
+    #     off_set <- opts$annos_offset[[i]]
+    #     dat_anno[,start:=(start-off_set[1])]
+    #     dat_anno[,end:=(end+off_set[2])]
+    # }
+  #################### 
+  
+  
+  
+  ## add to anno_list after checking that there are no weird chromosomes
+  anno_list[[i]] <- dat_anno %>% .[chr%in%opts$chr_list,] %>%
+    setkey(chr,start,end)
+  
+  ## get total number of CpG sites for the annotation
+   anno_list[[i]] <- cpg_stats(anno_list[[i]], genome = Hsapiens)
+}
+saveRDS(anno_list, file = str_c(io$basedir,"/GRCh38/hg38_anno_list.Rds"))
+```
+```{r}
+anno_list <- readRDS(str_c(io$basedir,"/GRCh38/hg38_anno_list.Rds"))
+## processed annotaton file containing cpg stats
+anno_list[[1]] %>% head()
+```
+
+
+
+```{r}
+## temporary folder to store the processed individual files
+dir.create(sprintf("%s/tmp",io$out.folder), recursive=T)
+```
+
+```{r}
+############ for each cell
+for (i in 1:length(samples_keep)) {
+  sample=samples_keep[i]
+############ check if already processed
+  samples_processed <- list.files(sprintf("%s/tmp",io$out.folder))
+  if (sum(str_detect(samples_processed,str_c(sample,"_",opts$anno))) == length(opts$anno)) {
+    cat(sprintf("Sample %s already processed for all required annotations...\n",sample)) 
+  } else {
+    cat(sprintf("Sample %s has not been processed, annotating...\n",sample))  
+    
+############ Read and parse raw methylation data (cov files)
+    dat_sample <- fread(paste0(io$in.folder,'/',sample, '.cov'), sep="\t",
+                        header="auto", verbose=F, showProgress=F)
+############ glimpse at file
+    # head(dat_sample)
+        #        V1    V2    V3  V4 V5 V6
+        # 1: 12 10319 10319 100  1  0
+        # 2: 12 12092 12092 100  1  0
+        # 3: 12 12866 12866 100  1  0
+        # 4: 12 12885 12885 100  1  0
+        # 5: 12 12910 12910 100  1  0
+        # 6: 12 15120 15120 100  1  0
+############ drop counts and keep calculated rates for each CpG site
+############ it is not practical to do weighted rates across contexts
+    dat_sample %<>% .[,1:4]
+############ add column names
+    ## start and end both needed for overlapping
+    colnames(dat_sample) <- c("chr","start","end","rate_single")
+    ## for those with rate_single>=50, met = 1, otherwise 0 (for single bp, rate does not make sense)
+    ## Only a very small proportion of calls have non binary rates
+    ## dat_sample$rate_single %>% (function(x) sum(x>0 & x<100)/length(x))
+    dat_sample[,met:=ifelse(rate_single<50,0,1)]
+    ## change rates to 0 and 1 based on majority vote for binomial modelling
+############ set keys
+    ## must set key for foverlaps - keys are the ones that are overlapped ########
+    dat_sample %<>% .[,chr:=as.factor(chr)] %>% setkey(chr,start,end)
+    
+############ overlap data with annotations
+    
+    for (anno in opts$anno) {
+      ## full name of the .tsv output
+      fname.out <- sprintf("%s/tmp/%s_%s.tsv",io$out.folder,sample,anno)
+      ## check it is not there already
+      if (file.exists(paste0(fname.out,".gz"))) {
+        cat(sprintf("Annotation for %s with %s already found, loading...\n",sample,anno))
+      } else {
+        cat(sprintf("Annotating %s with %s annotations...\n",sample,anno))
+        
+        ## overlap - genomic context
+        ## head(ovs(x_small_intervals, keyed_y_large_intervals)
+        ov <- foverlaps(dat_sample, anno_list[[anno]], nomatch=0) %>% 
+          
+          ## you get
+          ## head(ov)
+          #    chr  start    end strand              id i.start  i.end rate_single met
+          # 1:   1 923928 944581      + ENSG00000187634  924751 924751           0   0
+          # 2:   1 923928 944581      + ENSG00000187634  924764 924764           0   0
+          # 3:   1 923928 944581      + ENSG00000187634  924767 924767           0   0
+          # 4:   1 923928 944581      + ENSG00000187634  924772 924772           0   0
+          # 5:   1 923928 944581      + ENSG00000187634  924779 924779           0   0
+          # 6:   1 923928 944581      + ENSG00000187634  924791 924791           0   0
+           
+            ## trim
+          .[,"i.end":=NULL] %>% setnames("i.start","pos") ## remove the duplicate end column and rename  i.start to pos
+        
+        ## Now you have
+        ## head(ov)
+          #    chr  start    end strand              id    pos rate_single met
+          # 1:   1 923928 944581      + ENSG00000187634 924751           0   0
+          # 2:   1 923928 944581      + ENSG00000187634 924764           0   0
+          # 3:   1 923928 944581      + ENSG00000187634 924767           0   0
+          # 4:   1 923928 944581      + ENSG00000187634 924772           0   0
+          # 5:   1 923928 944581      + ENSG00000187634 924779           0   0
+          # 6:   1 923928 944581      + ENSG00000187634 924791           0   0
+
+
+############  calculate methylation status for each region in the annotation by summarising over all sites
+        out <- ov[,c("sample","anno") := list(sample,anno)] %>% ## add sample and anno columns
+          ## for each sample, for each gene, and each annotation set 'calls_methylated' as the
+          ## number of calls where majority were 1 (rate>=50%)
+          ## and set 'calls_total' as the total number of observations within that context for that sample and annotation
+          ## assuming a rate for every site as an observation for the uniform RV 'rate' of the context, ML averages
+          ## the rates which is what Ricard did.
+          .[,.(calls_methylated=sum(met), calls_total=.N,
+               rate_unif=round(mean(rate_single))), keyby=.(sample,id,anno)] %>% 
+          ## add rate_binom following Smalwood's method
+          .[,rate_binom:=round((calls_methylated+1)/(calls_total+2)*100)]
+        out <- merge(out,
+                     anno_list[[anno]][,c("id","total_cpg","dens_cpg")],
+                     by="id"
+                     )
+
+         plot(out$rate_binom, out$rate_unif, xlab='binomial distribution', ylab='uniform distribution',
+              main=paste0('Methylation rate for ', substr(sample[1],0,2), ' \n ', anno))
+        # Store and save results
+        fwrite(out, fname.out, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+      }
+    }
+  }
+}
+
+```
+```{r}
+## concatenate everything and save it
+cat("Annotations finished, combining results...\n")
+files <- list.files(str_c(io$out.folder,"/tmp"), pattern=".tsv")
+foo <- lapply(files, function(f) fread(paste0(io$out.folder,'/tmp/',f))) %>% rbindlist
+write.table(foo, sprintf("%s/met_data.tsv",io$out.folder), quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+```
+
+
