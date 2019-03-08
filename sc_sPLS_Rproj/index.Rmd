@@ -27,8 +27,14 @@ For cell matching scBSseq:
 
 # Methylation
 
+  * [Preprocessing](./02_Methylation/01_Preprocessing_Methylation/01_Preprocessing_Methylation.html)
+  * [QC](./02_Methylation/02_QC_Methylation/02_QC_Methylation.html)
+  * [Dimension Reduction](./02_Methylation/03_DimensionReduction_Methylation/03_DimensionReduction_Methylation.html)
+
 # Integartion
 
+  * [Gene-wise correlations]()
+  * [sPLS]()
 
 <!-- The cells are from the Kasumi-1 AML cell line. Cell identifiers are given by a letter (indicating plate row), and a number (indicating plate column), e.g. *_A7_*, *_C10_*. -->
 
