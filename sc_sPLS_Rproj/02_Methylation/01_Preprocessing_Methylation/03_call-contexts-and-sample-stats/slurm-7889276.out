@@ -1,0 +1,96 @@
+
+R version 3.5.2 (2018-12-20) -- "Eggshell Igloo"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## for HPC
+> .libPaths('~/R_libs/')
+> ## check Rmd parameters before full run
+> R_file_wd <- file.path(getwd(),'02_Methylation/01_Preprocessing_Methylation/03_call-contexts-and-sample-stats')
+> rmd_file <- '03_call-contexts-and-sample-stats.Rmd'
+> test_run <- FALSE
+> 
+> ## if not on hpc
+> if(grepl('Al',Sys.info()['nodename'])){
++   setwd(R_file_wd) ##CHECK
++ }
+> 
+> out_dir=NULL
+> docs <- '../../../docs'
+> if(dir.exists(docs)){
++   out_dir <- docs
++ }
+> 
+> rmarkdown::render(input = rmd_file,  ##CHECK the rmd file
++                   # output_format = 'html_document', NULL==default
++                   # output_file = "index.html", ## name of output html - NULL==default
++                   # params = list(cache=FALSE, echo=TRUE, 
++                   #               chrs=c(1:22,"MT"), ##CHECK chromosomes to use for genome c stats
++                   #               genome_stats_rds='genome_c_stats.Rds'), ##CHECK
++                   output_dir = out_dir ## directory of output html
++ )
+
+
+processing file: 03_call-contexts-and-sample-stats.Rmd
+  |                                                                         |                                                                 |   0%  |                                                                         |.....                                                            |   8%
+  ordinary text without R code
+
+  |                                                                         |...........                                                      |  17%
+label: unnamed-chunk-1
+  |                                                                         |................                                                 |  25%
+  ordinary text without R code
+
+  |                                                                         |......................                                           |  33%
+label: unnamed-chunk-2
+  |                                                                         |...........................                                      |  42%
+  ordinary text without R code
+
+  |                                                                         |................................                                 |  50%
+label: unnamed-chunk-3 (with options) 
+List of 1
+ $ cache: logi FALSE
+
+  |                                                                         |......................................                           |  58%
+  ordinary text without R code
+
+  |                                                                         |...........................................                      |  67%
+label: unnamed-chunk-4
+  |                                                                         |.................................................                |  75%
+  ordinary text without R code
+
+  |                                                                         |......................................................           |  83%
+label: unnamed-chunk-5
+  |                                                                         |............................................................     |  92%
+  ordinary text without R code
+
+  |                                                                         |.................................................................| 100%
+label: unnamed-chunk-6
+sample_stats.Rds renamed to: ./__log/sample_stats_overwritten_19_03_31_11_00_44.Rds
+
+output file: 03_call-contexts-and-sample-stats.knit.md
+
+/usr/local/easybuild/software/pandoc/2.0.3/bin/pandoc +RTS -K512m -RTS 03_call-contexts-and-sample-stats.utf8.md --to html4 --from markdown+autolink_bare_uris+ascii_identifiers+tex_math_single_backslash+smart --output 03_call-contexts-and-sample-stats.html --email-obfuscation none --self-contained --standalone --section-divs --template /home/ajabadi/R_libs/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable 'theme:bootstrap' --include-in-header /tmp/RtmpeB6pGU/rmarkdown-str51d239a1e617.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' 
+
+Output created: 03_call-contexts-and-sample-stats.html
+Warning messages:
+1: In grDevices::png(f) :
+  unable to load shared object '/usr/local/easybuild/software/R/3.5.2-spartan_gcc-6.2.0/lib64/R/library/grDevices/libs//cairo.so':
+  /lib64/libpangoft2-1.0.so.0: undefined symbol: FcWeightFromOpenTypeDouble
+2: In grDevices::png(f) : failed to load cairo DLL
+3: In dir.create(io$out_cov_context, recursive = T) :
+  '../../../../data/scBSseq/met/parsed/cov_context' already exists
+> 

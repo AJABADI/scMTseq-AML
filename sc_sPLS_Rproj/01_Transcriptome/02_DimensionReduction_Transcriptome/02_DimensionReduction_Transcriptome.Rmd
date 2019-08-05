@@ -21,8 +21,9 @@ knitr::opts_chunk$set(cache=io$chunk$cache, echo=io$chunk$echo,  cache.comment=F
 source_dir <- '../../utils'
 R_files <- list.files(source_dir, pattern = '.R$', full.names = TRUE) ## all files ending in .R
 invisible(lapply(R_files, base::source))
-
+source('../../all_libs.R')
 io$input$rna_sce_normalised <- '../../../output/parsed/rna_sce_normalised.Rds'
+io$output$rna_sce_normalised_red_dims <- '../../../output/parsed/rna_sce_normalised_red_dims.Rds'
 ## check that files exist
 check_files_exist(io$input)
 io$opts$top_hvgs = 500
@@ -30,6 +31,11 @@ io$opts$pcs = 5
 ## load
 rna_sce <- readRDS(io$input$rna_sce_normalised)
 ```
+```{r}
+f <- readRDS(io$output$rna_sce_normalised_red_dims )
+```
+
+
 ```{r}
 ## veriance decomosition
 rna_sce %<>% sce_var_decomp()
@@ -48,10 +54,24 @@ plot_trendvar(rna_sce)
 ```{r}
 ## pca
 pca_res_all = pca(t(logcounts(rna_sce)), ncomp = io$opts$pcs)
+reducedDim(rna_sce, "pca_all") <- pca_res_all$variates$X
 ```
 ```{r, out.width="100%"}
 ## plot
-pca_grid(pca_obj = pca_res_all, top = 'PCA plots - all genes')
+plots <- pca_grid(pca_res_all, point_label = TRUE, grid_mode = FALSE)
+plots$screeplot
+plots$pc12
+plots$pc13
+plots$p23
+```
+
+```{r}
+## correlation of first PC and log library size
+# pc1 <- pca_res_all$variates$X[,1]
+# libsize <- rna_sce$log10_total_counts
+# names(libsize) <- colnames(rna_sce)
+# libsize <- libsize[names(pc1)]
+# cor(pc1, libsize,method = "pearson" ) # -0.3
 ```
 
 ### Hierarchical Clustering
@@ -74,10 +94,13 @@ rna_sce_hvg_total = sce_subset(rna_sce, row_data = 'total',
 ```{r}
 ## pca
 pca_res_hvgs_total = pca(t(logcounts(rna_sce_hvg_total)), ncomp = io$opts$pcs)
+redDim <- paste0("hvg_tot_",io$opts$top_hvgs)
+reducedDim(rna_sce, redDim) <- pca_res_hvgs_total$variates$X
+colnames(reducedDim(rna_sce, redDim)) %<>% paste0("hvg_tot_",.)
 ```
 ```{r, out.width="100%"}
 ## plot
-pca_grid(pca_obj = pca_res_hvgs_total, top = 'PCA plots - top HVGs - total variance')
+pca_grid(pca_obj = pca_res_hvgs_total, top = 'PCA plots - top HVGs - total variance', point_label = TRUE)
 ```
 
 
@@ -101,10 +124,14 @@ rna_sce_hvg_bio = sce_subset(rna_sce, row_data = 'bio',
 ```{r}
 ## pca
 pca_res_hvgs_bio = pca(t(logcounts(rna_sce_hvg_bio)), ncomp = io$opts$pcs)
+redDim <- paste0("pca_bio_", io$opts$top_hvgs)
+reducedDim(rna_sce, redDim) <- pca_res_hvgs_bio$variates$X
+colnames(reducedDim(rna_sce, redDim)) %<>% paste0("hvg_bio_",.)
+saveRDS(rna_sce, io$output$rna_sce_normalised_red_dims)
 ```
 ```{r, out.width="100%"}
 ## plot
-pca_grid(pca_obj = pca_res_hvgs_bio, top = 'PCA plots - top HVGs - bio. variance')
+pca_grid(pca_obj = pca_res_hvgs_bio, top = 'PCA plots - top HVGs - bio. variance', point_label = TRUE)
 ```
 
 ### Hierarchical Clustering

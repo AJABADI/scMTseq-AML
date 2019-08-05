@@ -1,0 +1,129 @@
+---
+title: "cov file with context and sample stats"
+params:
+  cache: FALSE
+  echo: TRUE
+  subset: FALSE
+  chrs_readcov: !r c(1:22,"MT")
+  chrs_global_stats: !r 1:22 ## used for global methylation calcs
+  run_spec: 'more wall time as it terminated at B6 - first run after c contexts' ## to be stored ine log file for the run
+  sample_stats: 'all_sample_stats.Rds'
+  genome_cpgs: '../01_genome_cytosine_stats/genome_c_stats.Rds'
+  base_dir: '../../../../data/scBSseq'
+  recalc_contexts: FALSE
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, purl=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide', eval=TRUE)
+```
+
+
+```{r}
+source('../../../utils/utils.R') ## functions
+source('../_libs.R') ## libraries
+```
+
+
+```{r, cache=FALSE}
+io <- list()
+## bismark (.cov) files
+io$in_folder <- str_c(params$base_dir,"/met/raw/bismark")
+io$out_folder <- str_c(params$base_dir,"/met/parsed") ## ouput
+## folder for stroring cov files with context information
+io$out_cov_context<- sprintf("%s/cov_context",io$out_folder)
+
+dir.create(io$out_cov_context, recursive=T)
+```
+
+```{r}
+## samples
+samples_keep <- sapply(str_split(list.files(io$in_folder, pattern = "\\.cov$"),"\\.cov"),"[[", 1)
+stopifnot(all(!duplicated(samples_keep)))
+```
+
+
+```{r}
+genome_trincus <- readRDS(params$genome_cpgs)
+genome_tot_cpg <- sum(genome_trincus$cpg_content[params$chrs_global_stats])
+```
+
+Sample stats
+
+```{r}
+sample_stats = data.frame(row.names = samples_keep)
+sample_stats$global_mean <- sample_stats$global_var <- 
+  sample_stats$cpg_mean <- sample_stats$cpg_var <-  NA
+sample_stats %<>%.[,c(dim(.)[2]:1)] ## re-order the columns
+############ for each cell
+  for (i in 1:length(samples_keep)) {
+  sample=samples_keep[i]
+  ## if subset is true, files to end in *withContext_subset.cov*
+  suffix <- ifelse(params$subset, "_withContext_subset","_withContext")
+  name_out <- str_c(io$out_cov_context,"/", sample,suffix,".cov")
+  # if(!!file.exists(name_out)){}
+  if(params$recalc_contexts){
+############ Read and parse raw methylation data (cov files)
+  dat_sample <- fread(paste0(io$in_folder,'/',sample, '.cov'), sep="\t",
+                        header="auto", verbose=F, showProgress=F)
+############ glimpse at file
+    # head(dat_sample)
+        #        V1    V2    V3  V4 V5 V6
+        # 1: 12 10319 10319 100  1  0
+        # 2: 12 12092 12092 100  1  0
+        # 3: 12 12866 12866 100  1  0
+        # 4: 12 12885 12885 100  1  0
+        # 5: 12 12910 12910 100  1  0
+        # 6: 12 15120 15120 100  1  0
+############ drop the calculated rate and re-calculate assuming a binomial distribution like Ricard's
+    dat_sample %<>%  set_colnames(c("chr","start","end","rate_ML", "cm","cu")) %>%  ## counts methylated and unmethylated
+      ## filter chromosomes by canonical and mt ones
+      .[chr %in% params$chrs_readcov,]
+
+    if(params$subset){
+      dat_sample %<>% .[1:params$subset]
+    }
+    
+    ## add c context
+    dat_sample %<>% assign_strand_context()
+    fwrite(dat_sample, name_out, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+
+    # 
+    # dat_sample %<>% 
+    # 
+    #   .[,rate_MAP:=((cm+1)/(cm+cu+2))] %>%
+    #   .[,calls:=cm+cu] %>%
+    #   .[,rate_rounded:=floor(2*rate_MAP)] %>% 
+    #   .[,chr:=as.factor(chr)] %>% 
+    #   .[,wt:=weight_se(rate_MAP, calls)]
+} else {
+  
+  dat_sample <- fread(name_out, sep="\t",
+                        header="auto", verbose=F, showProgress=F)
+}
+
+    ## calculate sample stats:
+    
+    ## global
+    dt <- dat_sample[chr %in% params$chrs_global_stats] [c_context=="CpG"]
+    sample_stats[sample, "global_mean"] <- dt  %$% wtd_mean(x=rate_ML, weights=cm+cu)
+    sample_stats[sample, "global_var"] <- dt  %$% wtd_var(x=rate_ML, weights=cm+cu)
+    ## cpg
+    sample_stats[sample, "cpg_mean"] <- dt %$% wtd_mean(x=rate_ML, weights=cm+cu)
+    sample_stats[sample, "cpg_var"] <- dt %$% wtd_var(x=rate_ML, weights=cm+cu)
+
+    sample_stats[sample, "cpg_coverage"] <- dim(dt)[1]/(genome_tot_cpg)
+    sample_stats[sample, "cpg_mean_depth"] <- dt %$% mean(cm+cu)
+}
+if(!params$subset){
+  file_recorder(outFile = params$sample_stats, logFile = 'sample_stats', logFolder = '__log',
+              run_spec = params$run_spec) ## update the run spec from params for a new run
+  saveRDS(sample_stats, file = params$sample_stats)
+} else{
+  saveRDS(sample_stats, file = "sample_stats_subset.Rds")
+  lapply(list.files(io$out_cov_context, pattern = "subset.cov", full.names = TRUE), file.remove)
+}
+```

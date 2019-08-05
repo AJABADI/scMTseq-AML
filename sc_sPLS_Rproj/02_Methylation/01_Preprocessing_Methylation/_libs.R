@@ -1,0 +1,6 @@
+suppressMessages(library(BSgenome.Hsapiens.UCSC.hg38))
+suppressMessages(library(GenomicRanges))
+suppressMessages(library(data.table))
+suppressMessages(library(seqinr))
+suppressMessages(library(stringr))
+suppressMessages(library(magrittr))

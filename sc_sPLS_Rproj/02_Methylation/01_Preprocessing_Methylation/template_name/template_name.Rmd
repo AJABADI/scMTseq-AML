@@ -1,0 +1,34 @@
+---
+title: "cov file with context and sample stats"
+params:
+  cache: FALSE
+  echo: TRUE
+  subset: FALSE
+  chrs_global_stats: !r 1:22 ## used for global methylation calcs
+  run_spec: 'first run after c contexts' ## to be stored ine log file for the run
+  sample_stats: 'sample_stats.Rds' 
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, purl=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide', eval=TRUE)
+```
+
+
+```{r}
+source('../../../utils/utils.R') ## functions
+source('../_libs.R') ## libraries
+```
+
+
+```{r, cache=FALSE}
+## input and outputs files and directories
+io$basedir <- ifelse(grepl("Al",Sys.info()['nodename']),
+                    "../../../data/scBSseq",
+                     params$base_dir
+                     )
+
+```

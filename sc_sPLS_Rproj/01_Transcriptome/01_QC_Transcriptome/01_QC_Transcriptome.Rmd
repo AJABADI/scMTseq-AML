@@ -1,5 +1,5 @@
 ---
-title: Transcriptome QC and Normalisation
+title: Transcriptome QC and Normalisation - matching cells
 output:
   html_document:
         toc: yes
@@ -21,7 +21,8 @@ source_dir <- '../../utils'
 R_files <- list.files(source_dir, pattern = '.R$', full.names = TRUE) ## all files ending in .R
 invisible(lapply(R_files, base::source))
 
-io$opts$min_cells_expr <- 0.5 ## homogeneous population
+source("../../all_libs.R")
+io$opts$min_cells_expr <- 0.25 ## homogeneous population
 io$opts$min_log10exp <- 0.7 ## minimum log expression based on lib size histpgram
 io$input$meth_cell_names <- '../../RData/methylation_cell_names.RData'
 io$input$rna_raw <- '../../../data/scRNAseq/raw/Kasumi1_scRNAseq_RawCounts.txt'
@@ -48,27 +49,36 @@ rna_sce <- SingleCellExperiment(assays = list(counts = as.matrix(counts_raw)))
 ```{r qc}
 ## add QC metrics
 rna_sce <- scater::calculateQCMetrics(rna_sce)
-## filter undetected genes and add percent of genes detected in colData
-rna_sce <- sce_detected_genes(rna_sce)
 ```
 
 For cells matching the scBSseq data.
 
 ## Gene QC
 
+```{r}
+## filter undetected genes and add percent of genes detected in colData
+rna_sce <- sce_detected_genes(rna_sce)
+```
+
 To filter genes with high level of dropouts, genes to have a log mean expression of at least `r io$opts$min_log10exp`:
 
 ```{r}
 ## gene QC
 gene_metrics <- as.data.frame(rowData(rna_sce)) ## a data.frame of gene metrics
-
 ## filter the first peak of non-zero values
-hist <- hist(gene_metrics$log10_mean_counts, prob=TRUE, breaks = 100, col = 'grey80',
-            main= 'Histogram of log10 mean counts', xlab = 'log10[mean counts] for each gene')
-abline(v=io$opts$min_log10exp, col='red', lwd=2)
+hist_color(x=gene_metrics$log10_mean_counts, cutoff =io$opts$min_log10exp,  title = 'Histogram of log10 mean counts for detected genes', x_lab = 'log10[mean counts] for each gene' )
 ```
 ```{r}
-rna_sce %<>% .[rowData(.)$log10_mean_counts>=io$opts$min_log10exp,]
+## filter high dropout
+hist_color(x=100-gene_metrics$pct_dropout_by_counts, cutoff =io$opts$min_cells_expr*100, n_breaks = 30,
+           title = 'Histogram of gene detection rates', x_lab = 'percent of cells detecting the gene' )
+```
+
+
+```{r}
+## filter genes with high dropout
+rna_sce %<>% .[rowData(.)$log10_mean_counts>=io$opts$min_log10exp &
+                 rowData(.)$pct_dropout_by_counts<=(1-io$opts$min_cells_expr)*100,]
 ```
 
 ```{r, echo=TRUE, results='show'}
@@ -78,7 +88,6 @@ dim(rna_sce)
 ```{r}
 ## recalculate QC metrics
 rna_sce <- scater::calculateQCMetrics(rna_sce)
-rna_sce <- sce_detected_genes(rna_sce)
 ```
 
 ## Cell QC
@@ -91,6 +100,8 @@ cell_qc_out$plot
 ```
 
 `r ifelse(dim(rna_sce)[2]==dim(cell_qc_out$sce)[2], paste0('No cell filtering needed. Minimum percent of genes expressed: ', round(min(rna_sce$pct_total_features_by_counts)),'% .'), paste0('Number of cells that passed filtering: ', dim(cell_qc_out$sce)[2],'.'))`
+
+F6 and H6 might be doublets as the have high library sizes and high number of expressed genes. We will need to check the total CpG sites covered in the two as well and see if they show outlier behaviour.
 
 ```{r}
 rna_sce <- cell_qc_out$sce

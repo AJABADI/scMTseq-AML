@@ -1,0 +1,241 @@
+---
+title: "Integration"
+params:
+  cache: FALSE
+  echo: TRUE
+  run_spec: '.' ## INPUT to be stored ine log file for the run
+  
+  ## an parameter list should follow exactly the following format
+  IN: !r list(
+    met_expr = '../02_Methylation/02_QC_Methylation/met_exp.Rds',
+    utils = '../utils/utils.R',
+    sce_rna = '../../output/parsed/rna_sce_normalised_red_dims.Rds')
+    
+  OUT: !r list(
+    dir='.',
+    img = './img')
+  
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+suppressMessages({
+## source libraries and functions
+source(params$IN$utils)
+library(data.table)
+library(ggplot2)
+library(mixOmics)
+})
+```
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r}
+spls_full <- readRDS('../../output/spls_full_bothmodes.rds')
+```
+
+
+
+## Data
+
+```{r}
+met_exp <- readRDS(params$IN$met_expr)
+sce_rna <- readRDS(params$IN$sce_rna)
+transcriptome <- logcounts(sce_rna)
+list_met <- list()
+list_geneset <- list()
+list_spls <- list()
+```
+
+```{r}
+par_plot = data.frame(row.names = c('expression', 'genebody', 'prom', 'prom_cgi', 'prom_noncgi', 'intergenic' ),
+                      label = c('Transcriptome','Genebody', 'Promoter', 'Promoter (CGI)', 'Promoter (non-CGI)', 'Intergenic'),
+                      shape =c(17, 19, 15, 18, 8, 15), ## shapes for corr circ plots
+                      col = color.mixo(c(1, 2, 4, 5, 8,6))) ## colors for corr circ plots
+
+```
+
+## regression
+
+### data summary
+
+```{r}
+pct_NA <- function(mat) return(c(dim(mat), round(100*sum(is.na(mat))/length(mat))) %>% set_names(c("# of Samples", "# of Features", "% of NA's")))
+## summary of matrices and % of NA's
+spls_smry <- sapply(spls_full$regression, function(x) pct_NA(x$Xorig)) %>% as.data.frame()
+#                            genebody prom_cgi prom prom_noncgi intergenic
+#              # of Samples        40       40   40          40         40
+#              # of Features    14930     1914 2658         744       9868
+#              % of NA's           14       31   30          30         13
+## write to excel file
+R2Excel(dataf = spls_smry, file = '../../output/MethylomeSummary.xlsx', sheetName = "splsRegressionCov25", title = "Methylome Data Summary", subtitle = "Features covered in at least 25 cells", overwriteSheet = FALSE)
+```
+
+
+### plots
+
+```{r}
+## canonical
+spls_plot(spls_list=list_spls$canonical$fullset, pars = par_plot, comp=c(2,3))
+```
+
+```{r}
+selectVar(object=list_spls$canonical$fullset$prom_cgi, comp=1)$X$name
+```
+
+```{r}
+pearson_genewise <- readRDS("pearson_genewise.Rds")
+list2df <- function(x){
+  do.call(cbind, lapply(lapply(x, unlist), "[",
+              unique(unlist(c(sapply(x,names))))))
+}
+
+pearson_value <- list2df(pearson_genewise)
+pearson_value <- melt(pearson_value) %>% set_colnames(c('id', 'anno','correlation')) %>% as.data.table()
+```
+
+```{r}
+annos <-  unique(met_exp$anno)
+contexts <-  c(genebody="Genebody", intergenic="Intergenic", prom="Promoter",prom_cgi="Promoter-CGI", prom_noncgi="Promoter-nonCGI")
+
+my_col <- gg_color_hue(length(annos))
+names(my_col) <- annos
+levels(my_col) <- contexts
+```
+
+```{r}
+pairwise_spls_vars <- function(pearson_value, spls_obj=list_spls$canonical$fullset$genebody, component=1,caption='', mat='Y' )({
+  ggplot(as.data.frame(pearson_value[id %in% selectVar(object=spls_obj, comp=component)[[mat]]$name])) + 
+  geom_boxplot(aes(x=anno, y=correlation, fill=anno, col=anno), na.rm = TRUE, alpha=0.7, show.legend=FALSE) + 
+  labs(x="", y="Peasron Correlation", title=caption) + theme_bw() + geom_hline(yintercept = 0, linetype=3, col='red') +
+   scale_fill_manual(values = my_col, label=levels(my_col), guide_legend(title="Context")) +
+    scale_color_manual(values = my_col, label=levels(my_col), guide_legend(title="Context")) +
+    scale_x_discrete(labels=contexts) + theme(axis.text.x = element_text(face="bold")) + coord_flip()
+
+})
+```
+```{r}
+pairwise_spls_vars(pearson_value=pearson_value, spls_obj=list_spls$canonical$fullset$prom, component=1, caption = 'Promoter - componenent 1', mat='X')
+```
+
+
+```{r}
+## regression
+# spls_plot(spls_list=list_spls$regression$fullset, pars = par_plot)
+```
+
+```{r}
+## extracts all genes from spls objects in form of a character vector
+geneset_extract <- function(spls_obj, ncomp=NULL){
+if(is.null(ncomp)){
+  ncomp <- spls_obj$ncomp
+}
+  list(methylome= sapply(1:ncomp, function(x) selectVar(object=spls_obj, comp=x)$X$name) %>% as.vector(), 
+       transcriptome = sapply(1:ncomp, function(x) selectVar(object=spls_obj, comp=x)$Y$name) %>% as.vector())
+}
+```
+
+Gene sets
+
+```{r}
+list_geneset$canonical$fullset <- lapply(annos, function(x){ geneset_extract(spls_obj = list_spls$canonical$fullset[[x]], ncomp = 5)})
+```
+
+Get a vector of combined methylome and transcriptome genes
+
+```{r}
+genes_both <- lapply(annos, function(x) purrr::flatten_chr(list_geneset$canonical$fullset[[x]]))
+```
+
+
+```{r}
+## common ones ine each context
+common_genes <- lapply(list_geneset$canonical$fullset, function(x) {x[[1]][ x[[1]] %in% x[[2]] ]})
+## Promters:
+## 1. FTSJ3 ENSG00000108592: FtsJ RNA methyltransferase homolog 3
+## 2. MRPL43 ENSG00000055950: mitochondrial ribosomal protein L43
+## 3. CBX3 ENSG00000122565: chromobox 3
+```
+
+
+```{r}
+## enrichment
+# library('biomaRt')
+# mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+# require(topGO)
+# require(org.Hs.eg.db)
+
+anno='prom_cgi'
+view='transcriptome'
+## supply gene names
+      genes <- list_geneset$canonical$fullset[[anno]][[view]]
+      all_genes <- ifelse(view=='transcriptome', rownames(transcriptome), unique(met_exp$id))
+genes <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id","hgnc_symbol","description"),values=genes,mart= mart)
+all_genes <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id","hgnc_symbol","description"),values=all_genes,mart= mart)
+## a p=value
+      genes_id <- rep(0.049, length(genes$ensembl_gene_id))
+names(genes_id) <- genes$hgnc_symbol
+
+
+
+selection <- function(allScore){ return(allScore < 0.05)} # function that returns TRUE/FALSE for p-values<0.05
+allGO2genes <- annFUN.org(whichOnto="BP", feasibleGenes=NULL, mapping="org.Hs.eg.db", ID="symbol")
+GOdata <- new("topGOdata",
+              ontology="BP",
+              allGenes=genes_id,
+              annot=annFUN.GO2genes,
+              GO2genes=allGO2genes,
+              geneSel=selection,
+              nodeSize=10)
+
+## use rank info, irrelevant here
+
+results.ks <- runTest(GOdata, algorithm="classic", statistic="ks")
+goEnrichment <- GenTable(GOdata, KS=results.ks, orderBy="KS", topNodes=20)
+goEnrichment <- goEnrichment[goEnrichment$KS<0.05,]
+goEnrichment <- goEnrichment[,c("GO.ID","Term","KS")]
+goEnrichment$Term <- gsub(" [a-z]*\\.\\.\\.$", "", goEnrichment$Term)
+goEnrichment$Term <- gsub("\\.\\.\\.$", "", goEnrichment$Term)
+goEnrichment$Term <- paste(goEnrichment$GO.ID, goEnrichment$Term, sep=", ")
+goEnrichment$Term <- factor(goEnrichment$Term, levels=rev(goEnrichment$Term))
+goEnrichment$KS <- as.numeric(goEnrichment$KS)
+
+## plot
+
+require(ggplot2)
+ggplot(goEnrichment, aes(x=Term, y=-log10(KS))) +
+  stat_summary(geom = "bar", fun.y = mean, position = "dodge") +
+  xlab("Biological process") +
+  ylab("Enrichment") +
+  ggtitle("Title") +
+  scale_y_continuous(breaks = round(seq(0, max(-log10(goEnrichment$KS)), by = 2), 1)) +
+  theme_bw(base_size=24) +
+  theme(
+    legend.position='none',
+    legend.background=element_rect(),
+    plot.title=element_text(angle=0, size=24, face="bold", vjust=1),
+    axis.text.x=element_text(angle=0, size=18, face="bold", hjust=1.10),
+    axis.text.y=element_text(angle=0, size=18, face="bold", vjust=0.5),
+    axis.title=element_text(size=24, face="bold"),
+    legend.key=element_blank(),     #removes the border
+    legend.key.size=unit(1, "cm"),      #Sets overall area/size of the legend
+    legend.text=element_text(size=18),  #Text size
+    title=element_text(size=18)) +
+  guides(colour=guide_legend(override.aes=list(size=2.5))) +
+  coord_flip()
+
+```
+
+```{r}
+saveRDS(list_spls, file='list_spls_regression_canonical.Rds')
+saveRDS(list_geneset, file='list_geneset.Rds')
+```
+
+
+

@@ -1,0 +1,13 @@
+name: sc_sPLS_aml_signatures
+title: sc_sPLS_aml_signatures
+username:
+account: aljabadi
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 924756
+bundleId: 2077960
+url: https://aljabadi.shinyapps.io/sc_sPLS_aml_signatures/
+when: 1557636989.60476
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: README-spls_out.md|scMTseq_slides_08052019_AlHeattherCarlos.pptx

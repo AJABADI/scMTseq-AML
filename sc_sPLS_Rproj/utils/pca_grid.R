@@ -9,20 +9,21 @@ library(ggplot2)
 
 # pca.obj=pca.res
 # col='darkblue'
-# diff.samples = NULL
-# default.label = "Matching"
-# diff.label = "RNA-seq only"
-# point.label=F
+# diff_samples = NULL
+# default_label = "Matching"
+# diff_label = "RNA-seq only"
+# point_label=F
 
 
 # pca = pca.obj
 # PCs = c(1,2)
 
 ## multi pca + variance plot
-pca_grid = function(pca_obj=pca_res, col='well', diff_samples = NULL,
-                    default_label = "Matching", diff_label = "RNA-seq only", point_label=F, top = ""){
+pca_grid = function(pca_obj=pca_res_all, col='well', diff_samples = NULL,
+                    default_label = "Matching", diff_label = "RNA-seq only",
+                    point_label=F, top = "", grid_mode=TRUE){
   
-  gg_pca = function(pca=pca_res, PCs = c(1,2), label = point_label ){
+  gg_pca = function(pca=pca_res_all, PCs = c(1,2), label = point_label ){
     ## variates
     mat = as.data.frame(pca$variates$X)
     ## add well row
@@ -35,11 +36,13 @@ pca_grid = function(pca_obj=pca_res, col='well', diff_samples = NULL,
         theme(plot.title = element_text(hjust = 0.5))
       
       if(label){
-        well = substr(rownames(mat),0,1)
+        mat$well = substr(rownames(mat),0,1)
         p = p + 
           geom_text(aes(x=mat[,PCs[1]], y=mat[,PCs[2]],label=rownames(mat),
                         col = well),hjust=0, vjust=0) +
-          scale_color_manual(values = color.mixo(1:length(well)))
+          scale_color_manual(values = color.mixo(1:length(well)), labels=rep("", dim(mat)[1]),
+                             guide=guide_legend(title="Well", override.aes = list(label = paste0("Row ",unique(mat$well)))))
+        
       } else {
         if(col!='well'){
           p = p + geom_point(aes(x=mat[,PCs[1]], y=mat[,PCs[2]]), col =col)
@@ -74,12 +77,26 @@ pca_grid = function(pca_obj=pca_res, col='well', diff_samples = NULL,
     return(legend)}
   ## legend for all plots
   p2 = gg_pca(pca=pca_obj, PCs = c(1,2))
-  all_legend = extract_legend(p2)
+  p3 = gg_pca(pca=pca_obj, PCs = c(1,3))
+  p4 = gg_pca(pca=pca_obj, PCs = c(2,3))
   
-  p2 = p2+ theme(legend.position="none")
-  p3 = gg_pca(pca=pca_obj, PCs = c(1,3))+ theme(legend.position="none")
-  p4 = gg_pca(pca=pca_obj, PCs = c(2,3))+ theme(legend.position="none")
+  if(grid_mode){
+    all_legend = extract_legend(p2)
+    p2 = p2 + theme(legend.position="none")
+    p3 = p3 + theme(legend.position="none")
+    p4 = p4 + theme(legend.position="none")
+    grid = grid.arrange(arrangeGrob(p1,p2,p3,p4, ncol = 2), all_legend,nrow=1,widths = c(11,1),
+                        top =textGrob(top,gp=gpar(fontsize=16,font=3, col = "blue")))
+    return(grid)
+  } else {
+    cat("Explained variance for first PCs")
+    p1
+    cat("PCA Plots:")
+    p2
+    p3
+    p4
+    
+  }
   
-  grid = grid.arrange(arrangeGrob(p1,p2,p3,p4, ncol = 2), all_legend,nrow=1,widths = c(11,1), top =textGrob(top,gp=gpar(fontsize=16,font=3, col = "blue")))
-  return(grid)
+  
 }

@@ -1,0 +1,381 @@
+---
+title: "cross clustering"
+params:
+  cache: TRUE
+  echo: TRUE
+  run_spec: '.' ## INPUT to be stored ine log file for the run
+  
+  ## an parameter list should follow exactly the following format
+  IN: !r list(
+    met_expr = '../02_Methylation/02_QC_Methylation/met_exp.Rds',
+    sce_rna = '../../output/parsed/rna_sce_normalised_red_dims.Rds',
+    utils = '../utils/utils.R'
+    )
+    
+  OUT: !r list(
+    dir='.',
+    img = './img')
+  
+output:
+  html_document:
+      toc: FALSE
+---
+
+
+```{r}
+## source libraries and functions
+source(params$IN$utils)
+suppressMessages({
+library(SingleCellExperiment)
+library(data.table)
+library(ggplot2)
+library(propr)
+library(gplots)
+})
+```
+
+```{r}
+## check files and directories exist
+check_files_exist(params$IN)
+dir.exists(params$OUT$dir)
+if(!dir.exists(params$OUT$img)){
+  dir.create(params$OUT$img)
+}
+```
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+## Data
+
+```{r}
+met_exp <- readRDS(params$IN$met_expr)
+sce_rna <- readRDS(params$IN$sce_rna)
+```
+
+Find the common genes across the two datasets to study the association variation caused by commmon sources of variation.
+
+```{r}
+## function to intersect the datasets by ids and return a list
+overlap_met_sce <- function(met=met_exp, ## DT having id, anno and cell_cov columns
+                       sce.rna=sce_rna, ## SCE
+                       anno='genebody', ## annotation in the met to use
+                       met_cov=20){ ## minimum cell coverage of id's in the methylation data
+  met_anno <- met[anno==anno & cell_cov>=met_cov]
+  id_intersect <- Reduce(intersect, list(rownames(sce.rna), unique(met_anno$id)))
+  sce_com <- sce_rna %>% .[rownames(.) %in% id_intersect]
+  met_anno_com <- met_anno %>%  .[id %in% id_intersect]
+  return(list('sce'=sce_com, 'met'=met_anno_com))
+}
+```
+
+```{r}
+id_intersect <- Reduce(intersect, list(rownames(sce_rna), unique(met_exp$id)))
+length(id_intersect) ## 8214
+100*length(id_intersect)/dim(sce_rna)[1] ## 87% of rnaseq genes retained
+100*length(id_intersect)/length(unique(met_exp$id)) ## 26% of scbsseq id's retained
+```
+```{r}
+## function to sort the sce ids based on decreasing row_data
+sce_sort <- function(sce, row_data='bio'){
+  return(sce %<>% .[rowData(.) %>% data.frame() %>% .[order(-.[[row_data]]),] %>% rownames(),])
+}
+```
+
+
+<!-- ```{r} -->
+<!-- ## pairwise correlation b/w variation in hvgs (expression vs lower CI of methylation variance) -->
+<!-- ## keep the common hvgs among the top init_hvg hvgs from both datasets and calculate the correlation b/w them -->
+<!-- pairwise_cor <- function(met_exp,  -->
+<!--                      init_hvg=1000, ## initial HVGs to use for overlapping - if FALSE, all will be considered -->
+<!--                      met_cov=20 , ## cell coverage in methylation data -->
+<!--                      annos=c('genebody', 'prom', 'prom_cgi', 'prom_noncgi'), -->
+<!--                      var='bio', ## type of expression variance to use -->
+<!--                      hvg_ref='lci',...){ ## column of met_exp as reference for HVGs -->
+<!--   pairwise <- list() -->
+<!--   for (anno in annos){ -->
+<!--     ## overlap them -->
+<!--   overlap <- overlap_met_sce(met = met_exp,sce.rna = sce_rna, anno=anno, met_cov = met_cov) -->
+<!--   met_anno <- overlap$met -->
+<!--   sce_com <- overlap$sce -->
+
+<!--   met_anno %<>% .[order(-lci)] -->
+<!--   unique_met_anno <- met_anno[!duplicated(id)] -->
+
+<!--   if(dim(unique_met_anno )[1]<init_hvg){ -->
+<!--     message('Number of initial HVGs enforced by methylation data') -->
+<!--     init_hvg <- dim(unique_met_anno )[1] -->
+<!--   } -->
+<!--   if(dim(sce_com )[1]<init_hvg){ -->
+<!--     message('Number of initial HVGs enforced by expression data') -->
+<!--     init_hvg <- dim(sce_com)[1] -->
+<!--   } -->
+
+<!--   met_hvgs <- unique_met_anno$id[1:init_hvg] -->
+<!--   ## sort sce_rna based on variation -->
+<!--   sce_rna %<>% sce_sort(row_data=var) -->
+<!--   rna_hvgs <- rownames(sce_rna)[1:init_hvg] -->
+
+<!--   common_hvgs <- intersect(met_hvgs, rna_hvgs) -->
+<!--   corr_ids[[anno]] <- length(intersect(met_hvgs, rna_hvgs)) -->
+
+<!--   cor_anno[[anno]] <- with(unique_met_anno, stats::cor(get(var), lci, use='pairwise.complete',...)) -->
+<!--   } -->
+
+<!--   return(cor_anno) -->
+<!-- } -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- hvg_corr(sce_rna = sce_rna_com, met_exp = met_exp_com, init_hvg = 1000,var='bio', anno = 'genebody', method='spearman') -->
+<!-- hvg_corr(sce_rna = sce_rna_com, met_exp = met_exp_com, init_hvg = 1000,var='bio', anno = 'genebody', method='pearson') -->
+<!-- hvg_corr(sce_rna = sce_rna_com, met_exp = met_exp_com, init_hvg = 1000,var='total', anno = 'genebody', method='kendall') -->
+<!-- ``` -->
+
+<!-- No considerable pairwise correlations. -->
+
+Hierarchical clustering of transcriptome data based on HVGs from methylome and vice versa:
+
+```{r}
+## function to dcast variables from data.tables
+## dcast
+dcast_met <- function(met_dt=met_exp, annotation='genebody', 
+                      min.cov=10, ## min cell coverage
+                      filt_sample=NULL, ## samples to filter
+                      valueVar='rhat', ## value to cast
+                      hvgs=FALSE){ ## FALSE or integer
+  met_dt %<>% .[anno==annotation & cell_cov>=min.cov & !sample %in% filt_sample]
+  
+  if(hvgs){
+    met_dt %<>% .[order(-lci)]
+    unique_dt <- met_dt[!duplicated(id)]
+    if(dim(unique_dt)[1]<hvgs){
+      message('Number of hvgs enforced by dimensions')
+      hvgs <- dim(unique_dt)[1]
+    }
+    hv_ids <- unique_dt$id[1:hvgs]
+    met_dt %<>% .[id %in% hv_ids]
+  }
+  
+  dcast(met_dt,id~sample, 
+        value.var = valueVar ) %>% setkey(id) %>% as.matrix(rownames=TRUE)
+}
+```
+
+```{r}
+## function to get the weighted euclidean norm for methylation data
+## function
+wt_euc_dist <- function(met_exp, ## methylation DT
+                        anno, ## annotation 
+                        minCov, ## min coverage of cells for each id
+                        hvgs=FALSE) { ## FALSE or number of HVGs to keep based on lci
+  mat <- dcast_met(met_dt = met_exp, annotation = anno, min.cov = minCov,hvgs=hvgs, valueVar = 'rhat')
+  wt <- dcast_met(met_dt = met_exp, annotation = anno, min.cov = minCov, hvgs=hvgs, valueVar = 'wij')
+  calls <- dcast_met(met_dt = met_exp, annotation = anno, min.cov = minCov, hvgs=hvgs,  valueVar = 'calls')
+
+  mat <- mat[,order(colnames(mat))]
+  iter <- expand.grid(list(rownames(mat),colnames(mat), colnames(mat)))
+  names(iter) <- c('site','cell1', 'cell2')
+  iter %<>% .[with(iter,cell1!=cell2),]
+  iter %<>% .[order(iter$cell1, rev(iter$cell2)),] 
+  iter %<>% .[1:floor(dim(iter)[1]/2),]
+  iter$wijj <- mapply(function(site,cell1,cell2) (sqrt(prod(wt[site,cell1],wt[site,cell2], na.rm = TRUE))), 
+                      iter[,'site'], iter[,'cell1'], iter[,'cell2'])
+  iter$r1 <-  mapply(function(site,cell1) (mat[site,cell1]), 
+                      iter[,'site'], iter[,'cell1'])
+  iter$r2 <-  mapply(function(site,cell2) (mat[site,cell2]), 
+                      iter[,'site'], iter[,'cell2'])
+  iter$calls <- mapply(function(site) (sum(calls[site,], na.rm = TRUE)),  iter[,1])
+
+  iter <- as.data.table(iter, keep.rownames = F)
+  iter[,sumwt:=sum(wijj, na.rm = TRUE), by=site]
+  iter[,wijj:=wijj*calls/sum(wijj), by=site]
+  iter[,l2_wt:=wijj*(r1-r2)^2]
+  dists <- iter[, .(wt_euc_d=sqrt(sum(l2_wt, na.rm = TRUE))), by=c('cell1', 'cell2')]
+  dists %<>% .[order(dists$cell1, dists$cell2)]
+  dist_mat <- matrix(0, nrow = dim(mat)[2], ncol = dim(mat)[2])
+  colnames(dist_mat) <- rownames(dist_mat) <- colnames(mat)
+  # dist_mat[upper.tri(dist_mat)] <- dists$wt_euc_d
+  dist_mat[lower.tri(dist_mat)] <- dists$wt_euc_d
+  dist_mat <- dist_mat + t(dist_mat)
+  return(dist_mat)
+}
+```
+
+```{r}
+## parameters for plots and functions
+anno_cov <- rep(20,5) #c(20,20,20,20,20)
+anno_hvgs <- rep(300,5) #c(300,300,300,300,300)
+anno_context <- c('Genebody', 'Promoter - CGI', 'Promoter', "Promoter non-CGI", 'Intergenic')
+anno_all <- c("genebody", "prom_cgi", "prom", "prom_noncgi", "intergenic")
+anno_df <- data.frame(cov=anno_cov, context=anno_context, hvgs=anno_hvgs, row.names = anno_all )
+```
+
+```{r}
+hier_clust <- function(met_exp, sce_rna, n_clust=2 ,clust_ref='met',rna_var='bio', anno='genebody', hvgs=500, minCov=25){
+  
+    met_anno <- met_exp[anno==anno & cell_cov >= minCov] ## keep the annotation only
+  if(isFALSE(hvgs)){
+    
+    if(clust_ref!='met'){ ## if rna clusters are reference
+    
+    pr <- propr(counts(sce_rna)) ## from package propr get a distance matrix
+    M <- getMatrix(pr)
+    
+    ff <- tempfile() ## don't plot
+    png(filename=ff)
+    h <- heatmap(M, keep.dendro = TRUE)
+    dev.off()
+    unlink(ff)
+    
+    row.clusters = as.hclust( h$Rowv )
+    clusters <-factor(cutree(row.clusters,k=n_clust), levels = 1:n_clust)
+    colz <- clusters
+    levels(colz) <- gg_color_hue(n_clust)
+    ## transcriptome cluster
+    heatmap.2(M,  RowSideColors = as.character(colz), dendrogram = 'row', trace='none', main = 'Transcriptome using all genes')
+    
+    met_dist <- wt_euc_dist(met_exp = met_anno, anno = anno, minCov = minCov, hvgs = FALSE)
+    titl <- paste0(anno_df[anno,]$context, ':\n Hierarchical clustering of context methylome \ncoloured by transcriptome clusters')
+    heatmap.2(met_dist,  RowSideColors = as.character(colz), dendrogram ='row',trace='none' ,main = titl)
+      
+    }else if(clust_ref=='met'){ ## if methylation hvgs are reference
+   
+    ## cluster methylation data
+    met_dist <- wt_euc_dist(met_exp = met_anno, anno = anno, minCov = minCov, hvgs = FALSE)
+    
+    ff <- tempfile() ## don't plot
+    png(filename=ff)
+    h <- heatmap(met_dist , keep.dendro = TRUE)
+    dev.off()
+    unlink(ff)
+    
+    row.clusters = as.hclust( h$Rowv )
+    clusters <-factor(cutree(row.clusters,k=n_clust), levels = 1:n_clust)
+    colz <- clusters
+    levels(colz) <- gg_color_hue(n_clust)
+    
+    titl <- paste0(anno_df[anno,]$context, ':\n Hierarchical clustering of context methylome')
+    heatmap.2(met_dist,  RowSideColors = as.character(colz), dendrogram ='row',trace='none' ,main = titl)
+    ## cluster cells
+    pr <- propr(counts(sce_rna)) ## from package propr get a distance matrix
+    M <- getMatrix(pr)
+    ## transcriptome cluster
+    heatmap.2(M,  RowSideColors = as.character(colz), dendrogram = 'row', trace='none', main = 'Transcriptome with Methylome clusters')
+    
+
+      }
+      
+  }
+    ## if HVGs
+  id_intersect <- Reduce(intersect, list(rownames(sce_rna), unique(met_anno$id))) ## common genes that pass filtering
+  
+  sce_rna_com <- sce_rna %>% .[rownames(.) %in% id_intersect] ## from 9394 to 8214
+  met_anno_com <- met_anno%>% .[id %in% id_intersect] ## from 589123 to 62496
+
+  if(clust_ref!='met'){ ## if rna clusters
+    ## choose n_clust hvgs from methylome using lci and subset rna using them
+    ## cluster rna using them and keep the cluster info
+    ## cluster methylome[hvgs] and colour by rna clusters
+    
+    met_anno_com %<>% .[order(-lci)]  ## sort the DT by hvgs
+    hvg_id <- met_anno_com[!duplicated(id)]$id[1:hvgs]
+    sce_rna_com %<>% .[hvg_id,] ## subset rna
+    ## cluster cells
+    pr <- propr(counts(sce_rna_com)) ## from package propr get a distance matrix
+    M <- getMatrix(pr)
+    
+    ff <- tempfile() ## don't plot
+    png(filename=ff)
+    h <- heatmap(M, keep.dendro = TRUE)
+    dev.off()
+    unlink(ff)
+    
+    row.clusters = as.hclust( h$Rowv )
+    clusters <-factor(cutree(row.clusters,k=n_clust), levels = 1:n_clust)
+    colz <- clusters
+    levels(colz) <- gg_color_hue(n_clust)
+    ## transcriptome cluster
+    heatmap.2(M,  RowSideColors = as.character(colz), dendrogram = 'row', trace='none', main = 'Transcriptome with Methylome HVGs')
+    
+    met_dist <- wt_euc_dist(met_exp = met_anno_com[id %in% hvg_id], anno = anno, minCov = minCov, hvgs = FALSE)
+    titl <- paste0(anno_df[anno,]$context, ':\n Hierarchical clustering of context methylome \ncoloured by transcriptome clusters')
+    heatmap.2(met_dist,  RowSideColors = as.character(colz), dendrogram ='row',trace='none' ,main = titl)
+      
+    }else if(clust_ref=='met'){ ## if methylation hvgs are reference
+    sce_rna_com %<>% sce_sort(row_data = rna_var)
+    hvg_id <- rownames(sce_rna_com[1:hvgs])
+    sce_rna_com %<>% .[hvg_id,] ## subset rna
+    
+    ## cluster methylation data
+    met_dist <- wt_euc_dist(met_exp = met_anno_com[id %in% hvg_id], anno = anno, minCov = minCov, hvgs = FALSE)
+    
+    ff <- tempfile() ## don't plot
+    png(filename=ff)
+    h <- heatmap(met_dist , keep.dendro = TRUE)
+    dev.off()
+    unlink(ff)
+    
+    row.clusters = as.hclust( h$Rowv )
+    clusters <-factor(cutree(row.clusters,k=n_clust), levels = 1:n_clust)
+    colz <- clusters
+    levels(colz) <- gg_color_hue(n_clust)
+    
+    titl <- paste0(anno_df[anno,]$context, ':\n Hierarchical clustering of context methylome \nusing transcriptome hvgs')
+    heatmap.2(met_dist,  RowSideColors = as.character(colz), dendrogram ='row',trace='none' ,main = titl)
+    ## cluster cells
+    pr <- propr(counts(sce_rna_com)) ## from package propr get a distance matrix
+    M <- getMatrix(pr)
+    ## transcriptome cluster
+    heatmap.2(M,  RowSideColors = as.character(colz), dendrogram = 'row', trace='none', main = 'Transcriptome with Methylome clusters')
+    
+
+      }
+}
+```
+
+### Genebody
+
+Clustering methylome using all genes colour coding the cells based on clusters of transcriptome using all genes:
+
+```{r, fig.asp=1}
+hier_clust(met_exp=met_exp, sce_rna=sce_rna, n_clust=4 ,clust_ref='rna', rna_var='bio', anno='genebody', hvgs=FALSE, minCov = 20, n_clust = 3, rna_var = 'bio')
+```
+
+Clustering transcriptome using all genes colour coding the cells based on clusters of methylome using all genes:
+
+```{r, fig.asp=1}
+hier_clust(met_exp=met_exp, sce_rna=sce_rna, n_clust=4 ,clust_ref='met', rna_var='bio', anno='genebody', hvgs=FALSE, minCov = 20, n_clust = 3, rna_var = 'bio')
+```
+
+
+Clustering methylome using HVGs colour coding the cells based on clusters of transcriptome using the same set of genes:
+
+```{r, fig.asp=1}
+hier_clust(met_exp=met_exp, sce_rna=sce_rna, anno = 'genebody', clust_ref = 'rna', hvgs = 1000, minCov = 20, n_clust = 4, rna_var = 'bio')
+```
+
+Clustering transcriptome using HVGs colour coding the cells based on clusters of methylome using the same set of genes:
+
+```{r, fig.asp=1}
+hier_clust(met_exp=met_exp, sce_rna=sce_rna, anno = 'genebody', clust_ref = 'met', hvgs = 1000, minCov = 20, n_clust = 4, rna_var = 'bio')
+```
+
+### Promoter
+
+Clustering methylome using HVGs colour coding the cells based on clusters of transcriptome using the same set of genes:
+
+```{r, fig.asp=1}
+hier_clust(met_exp=met_exp, sce_rna=sce_rna, anno = 'prom', clust_ref = 'rna', hvgs = 1000, minCov = 20, n_clust = 4, rna_var = 'bio')
+```
+
+Clustering transcriptome using HVGs colour coding the cells based on clusters of methylome using the same set of genes:
+
+```{r, fig.asp=1}
+hier_clust(met_exp=met_exp, sce_rna=sce_rna, anno = 'prom', clust_ref = 'met', hvgs = 1000, minCov = 20, n_clust = 4, rna_var = 'bio')
+```
+

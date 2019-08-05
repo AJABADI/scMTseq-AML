@@ -1,0 +1,245 @@
+---
+title: "Annotations"
+output:
+  html_document:
+      toc: yes
+---
+
+```{r}
+
+# This script allows us to extract the following information from an ENSEMBL database:
+# - Genes
+# - Transcripts
+# - Exons
+# - UTRs (all and 5' and 3' separately)
+# - Coding sequences (coding exons)
+
+library(stringr)
+library(dplyr)
+library(biomaRt)
+# listMarts(archive=F) ## see all available Marts
+source("functions.R")
+```
+```{r}
+outdir <- "../../../output/biomart"; dir.create(outdir, recursive=T)
+
+
+# Define database and dataset
+version = "87"
+# version = "75"
+database <- "ENSEMBL_MART_ENSEMBL"
+specie = "Hsapiens"
+# host="may2012.archive.ensembl.org"
+host="dec2016.archive.ensembl.org"
+
+allchr = c(1:22,"X","Y","MT")
+dataset <- "hsapiens_gene_ensembl"
+gene_attributes <- c("chromosome_name", "start_position", "end_position","strand",
+                     "ensembl_gene_id", "description", "hgnc_symbol")
+
+```
+```{r}
+
+## select a BioMart database and dataset to use
+ensembl <- useMart(biomart=database, ## "ENSEMBL_MART_ENSEMBL"
+                   dataset=dataset, ## "hsapiens_gene_ensembl"
+                   verbose=T, host=host)
+
+## biomaRt query function. Given a set of filters and corresponding values, it retrieves the user 
+## specified attributes from the BioMart database one is connected to.
+
+## Retrieve protein-coding gene information ##
+genes = getBM(attributes=gene_attributes, mart = ensembl,
+              # filters=c("chromosome_name","biotype"), values=list(allchr,"protein_coding")) %>% tbl_df
+              filters=c("chromosome_name"), values=list(allchr)) %>% tbl_df
+colnames(genes) <- c("chr","start","end","strand","ens_id","description","symbol")
+genes$chr <- convert_chr_format(genes$chr, to="long")
+genes$strand <- c("-","+")[factor(genes$strand)]
+genes <- genes[with(genes, order(chr,start,end)), ]
+genes <- remove(genes, riken=T, no_symbol=T, dna_segments=T, empty_description=T, duplicated=T, pseudogenes=T, predicted=T, expressed_sequence=T, olfactory=T)
+write.table(genes,str_c(outdir,"/",specie,"_genes_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+
+## Retrieve transcript information ##
+transcript_attributes <- c("chromosome_name", "start_position", "end_position","strand","ensembl_gene_id",
+                           "transcript_start", "transcript_end", "ensembl_transcript_id","transcript_biotype")
+transcripts = getBM(attributes=transcript_attributes, mart=ensembl,
+                    filters=c("chromosome_name","biotype"), values=list(allchr,"protein_coding")) %>% tbl_df
+colnames(transcripts) <- c("chr","gene_start","gene_end","strand","ens_gene_id","start","end","ens_transcript_id","transcript_biotype")
+transcripts$chr <- convert_chr_format(transcripts$chr, to="long")
+transcripts$strand <- c("-","+")[factor(transcripts$strand)]
+transcripts <- transcripts[with(transcripts, order(chr,start,end)), ]
+transcripts <- filter(transcripts, ens_gene_id %in% genes$ens_id)
+transcripts <- filter(transcripts, transcript_biotype=="protein_coding") %>% dplyr::select(-transcript_biotype)
+stopifnot(all(transcripts$ens_gene_id %in% genes$ens_id))
+write.table(transcripts,str_c(outdir,"/",specie,"_transcripts_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+
+## Retrieve exon information ##
+exon_attributes <- c("chromosome_name", "start_position", "end_position", "strand", "ensembl_gene_id",
+                     "transcript_start", "transcript_end", "ensembl_transcript_id","transcript_biotype",
+                     'ensembl_exon_id', "exon_chrom_start", "exon_chrom_end")
+exons <- getBM(attributes=exon_attributes, mart=ensembl,filters=c("chromosome_name","biotype"), values=list(allchr,"protein_coding")) %>% tbl_df
+colnames(exons) <- c("chr","gene_start","gene_end","strand","ens_gene_id","transcript_start","transcript_end","ens_transcript_id","transcript_biotype","ens_id","start","end")
+exons$chr <- convert_chr_format(exons$chr, to="long")
+exons$strand <- c("-","+")[factor(exons$strand)]
+exons <- exons[with(exons, order(chr,start,end)), ]
+exons <- filter(exons, transcript_biotype=="protein_coding") %>% dplyr::select(-transcript_biotype)
+exons <- filter(exons, ens_gene_id %in% genes$ens_id)
+write.table(exons,str_c(outdir,"/",specie,"_exons_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+
+## Retrieve coding sequence information ##
+cds_attributes <- c("chromosome_name", "start_position", "end_position", "strand", "ensembl_gene_id",
+                    "transcript_start", "transcript_end", "ensembl_transcript_id","transcript_biotype",
+                    'ensembl_exon_id',"exon_chrom_start", "exon_chrom_end","genomic_coding_start","genomic_coding_end")
+cds <- getBM(attributes=cds_attributes, mart=ensembl, filters=c("chromosome_name","biotype"), values=list(allchr,"protein_coding")) %>% tbl_df
+
+colnames(cds) <- c("chr","gene_start","gene_end","strand","ens_gene_id","transcript_start","transcript_end","ens_transcript_id","transcript_biotype","ens_exon_id","exon_start","exon_end","cds_start","cds_end")
+cds$chr <- convert_chr_format(cds$chr, to="long")
+cds$strand <- c("-","+")[factor(cds$strand)]
+cds <- cds[with(cds, order(chr,gene_start,gene_end)), ]
+cds <- filter(cds, transcript_biotype=="protein_coding") %>% dplyr::select(-transcript_biotype)
+cds <- cds %>% filter(!(is.na(cds_start) & is.na(cds_end)))
+cds <- filter(cds, ens_gene_id %in% genes$ens_id)
+stopifnot(all(cds$ens_gene_id %in% genes$ens_id))
+write.table(cds,str_c(outdir,"/",specie,"_cds_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+
+## Extract UTRs ##
+utr_attributes <- c("chromosome_name", "start_position", "end_position","strand","ensembl_gene_id",
+                    "transcript_start", "transcript_end", "ensembl_transcript_id","transcript_biotype",
+                    "5_utr_start", "5_utr_end", "3_utr_start", "3_utr_end")
+utr <- getBM(attributes=utr_attributes, mart=ensembl, filters=c("chromosome_name","biotype"), values=list(allchr,"protein_coding")) %>% tbl_df
+colnames(utr) <- c("chr","gene_start","gene_end","strand","ens_gene_id","transcript_start","transcript_end","ens_transcript_id","transcript_biotype","five_utr_start","five_utr_end","three_utr_start","three_utr_end")
+utr$chr <- convert_chr_format(utr$chr, to="long")
+utr$strand <- c("-","+")[factor(utr$strand)]
+utr <- utr[with(utr, order(chr,five_utr_start,five_utr_end)), ]
+utr <- filter(utr, transcript_biotype=="protein_coding") %>% dplyr::select(-transcript_biotype)
+utr <- utr %>% filter(! (is.na(three_utr_start) & is.na(five_utr_start) & is.na(five_utr_end) & is.na(three_utr_end) ))
+utr <- filter(utr, ens_gene_id %in% transcripts$ens_gene_id)
+utr <- filter(utr, ens_transcript_id %in% transcripts$ens_transcript_id)
+stopifnot(all(utr$ens_gene_id %in% genes$ens_id))
+# write.table(five_utr,str_c(outdir,"/Hsapiens_utr_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+# 5'UTR
+five_utr <- utr %>% filter(!(is.na(five_utr_start) & is.na(five_utr_end))) %>% dplyr::select(-contains(c("three_utr")))
+colnames(five_utr) <- c("chr","gene_start","gene_end","strand","ens_gene_id","transcript_start","transcript_end","ens_transcript_id","start", "end")
+write.table(five_utr,str_c(outdir,"/",specie,"_5utr_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+# 3'UTR
+three_utr <- utr %>% filter(!(is.na(three_utr_start) & is.na(three_utr_end))) %>% dplyr::select(-contains(c("five_utr")))
+colnames(three_utr) <- c("chr","gene_start","gene_end","strand","ens_gene_id","transcript_start","transcript_end","ens_transcript_id","start", "end")
+write.table(three_utr,str_c(outdir,"/",specie,"_3utr_BioMart.",version,".txt",sep=""), quote=FALSE, sep="\t", row.names=FALSE, col.names=TRUE)
+
+
+```
+
+## annotations
+
+```{r}
+library(data.table); library(magrittr);library(dplyr);library(GenomicRanges);library(rtracklayer)
+library(annotatr);library(TxDb.Hsapiens.UCSC.hg38.knownGene);library(org.Hs.eg.db)
+library(BSgenome);library(BSgenome.Hsapiens.UCSC.hg38)
+
+## all available ones for hg38:
+builtin_annotations() %>% .[substring(.,0,4)=="hg38"]
+
+Basicgenes <-"hg38_basicgenes"
+Enhancer <- "hg38_enhancers_fantom"
+Intergenic <- "hg38_genes_intergenic"
+Splicing<- c("hg38_genes_intronexonboundaries","hg38_genes_exonintronboundaries")
+CpG<- "hg38_cpgs"
+CGI <- "hg38_cpg_islands"
+
+Basicgenes_annotation <-  build_annotations(genome='hg38',annotations =Basicgenes)
+Enhancer_annotation <-  build_annotations(genome='hg38',annotations =Enhancer)
+Intergenic_annotation <-  build_annotations(genome='hg38',annotations =Intergenic)
+Splicing_annotation <- build_annotations(genome='hg38',annotations =Splicing)
+CpG_annotation <- build_annotations(genome='hg38',annotations = CpG)
+CGI_annotation <- build_annotations(genome='hg38', annotations = CGI)
+
+
+## create bed files from enhancers
+# enhancers <- granges2bed(Enhancer_annotation ) ## from utils load granges2bed
+# enhancers %<>% .[,1:3]
+# save(enhancers, file="/Users/alabadi/Documents/_Projects/sc_sPLS/data/scBSseq/filt/enhancers_chr_start_end.bed")
+
+## for every gene, look -1Mb +1Mb away from start and associate it to the closest enhancers
+size=20
+gene_ex <- data.table(chr=1, start = seq(10,100,10), id=paste0("id",1:10))
+gene_ex
+gene_ex_cenetred_1Mb <- gene_ex %>% .[,`:=`(start=start-size, end=start+size, tss=start)]
+gene_ex_cenetred_1Mb[start<0,start:=0] %>% setkey(chr,start,end)
+enhancer_ex <- data.table(chr=1, start = seq(20,40,10), end=seq(25,45,10), enhancer_id=paste0("enhancer-",1:3))
+## long ones first, keyed, fat one second
+ovlap <- foverlaps(enhancer_ex, gene_ex_cenetred_1Mb) ## overlaps with many, we want the closest
+head(ovlap) ## we want the enhancer start to be close to be closest to 
+## for the same overlaps (chr, start, end, i.start, i.end) we want the id with the least abs(tss-i.start)
+ovlap[,dist:=abs(tss-i.start)]
+## sort by decreasing dist
+ovlap %<>% .[base::order(dist)]
+head(ovlap)
+## remove duplicates
+ovlap %<>% .[!base::duplicated(ovlap, by=c("enhancer_id"))]
+
+```
+
+```{r}
+############################ create bed file from grnages object
+  
+granges2bed <- function(granges, keep=c("chr", "start", "end","strand", "id", "symbol"), 
+                        chrs=paste0("chr",c(1:22)) ## or c(1:22)
+                        ){
+  dt <- as.data.table(granges)[,c(1:3,5,8:9)] %>% setnames(c("seqnames","gene_id"),c("chr","id"))
+  dt[,chr:=chr_conv(chr, style = "ensembl")]
+  dt %<>%.[,keep, with=FALSE]
+}
+```
+
+```{r}
+
+############################ find all the enhancers near a gene TSS
+enhancer_overlap <- function(enhancer_dt, gene_dt, window_size=1e6){
+  stopifnot(c("chr","start", "end","id") %in% colnames(gene_dt) && c("chr","start", "end","id") %in% colnames(enhancer_dt))
+  ## get bed format genomic renges of enhancers and genes and return named enhancer_dt based on gene ids
+  
+  ## INPUT enhancer_dt: DT of form (at least) - unique id' names's will be assigned:
+  #     chr start end id
+  # 1:   1    20  25  enhancer_1
+  # 2:   1    30  35  enhancer_2
+  # 3:   1    40  45  enhancer_3
+  
+  ##INPUT gene_dt: gene annotaton of form:
+  # chr  start  end  id
+  
+  ## OUTPUT: a data.frame associating the enhancers and genes
+#        enhancer_1 enhancer_2 enhancer_3 enhancer_4
+# gene_1       TRUE      FALSE      FALSE      FALSE
+# gene_2       TRUE       TRUE      FALSE      FALSE
+# gene_3       TRUE       TRUE       TRUE      FALSE
+# gene_4       TRUE       TRUE       TRUE       TRUE
+# gene_5       TRUE       TRUE       TRUE       TRUE
+  
+  
+  ## for every gene, look -1Mb +1Mb away from start and associate it to the closest enhancers
+            # example
+            # enhancer_dt <- data.table(chr=1, start = seq(220,250,10)) %>% .[,end:=start+10]
+            # enhancer_dt[,id:=paste0("enhancer_",1:length(enhancer_dt$start))]
+            # gene_dt <- data.table(chr=1, start = seq(200,310,10)) %>% .[,end:=start+20]
+            # gene_dt[,id:=paste0("gene_",1:length(gene_dt$start))]
+            # window_size <- 20 ## upstream and downstream
+  
+  gene_dt_cenetred <- gene_dt %>% .[,`:=`(start=start-window_size, end=start+window_size)]
+  gene_dt_cenetred[start<0,start:=0] %>% setkey(chr,start,end)
+
+  ovlap <- foverlaps(enhancer_dt, gene_dt_cenetred) ## overlaps with many, we want the closest
+
+  tabl <- dcast(ovlap, id~i.id, value.var = 'chr') 
+  tabl %<>% data.frame(., row.names = "id")
+  tabl %<>% (function(x) ifelse(is.na(x),FALSE,TRUE))
+  return(tabl)
+}
+```
+
+

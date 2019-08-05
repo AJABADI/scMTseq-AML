@@ -1,0 +1,98 @@
+---
+title: "Integration"
+params:
+  cache: FALSE
+  echo: TRUE
+  run_spec: '.' ## INPUT to be stored ine log file for the run
+  
+  ## an parameter list should follow exactly the following format
+  IN: !r list(
+    met_expr = '../02_Methylation/02_QC_Methylation/met_exp.Rds',
+    utils = '../utils/utils.R',
+    sce_rna = '../../output/parsed/rna_sce_normalised_red_dims.Rds')
+    
+  OUT: !r list(
+    dir='.',
+    img = './img')
+  
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+suppressMessages({
+## source libraries and functions
+source(params$IN$utils)
+library(data.table)
+library(ggplot2)
+library(mixOmics)
+})
+```
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r}
+spls_full <- readRDS('../../output/spls_full_bothmodes.rds')
+methylome="prom"
+```
+
+## Regression
+
+```{r}
+mode="regression"
+spls.obj <- spls_full[[mode]][[methylome]]$spls
+```
+
+Component one is the same for both modes.
+
+### methylome signature 
+
+```{r}
+ome=c("methylome", "transciprome")[1]
+```
+
+#### component 1
+
+```{r}
+comp=1
+```
+
+```{r}
+dat <- ifelse(ome=="methylome", "X", "Y")
+pdf_name <- sprintf('img/sPLS-%s-%s-%s-comp%s.pdf', mode,ome, methylome,comp)
+pdf(file = pdf_name, width = 8, height = 5)
+goEnrich(spls.obj = spls.obj, dat = dat, comp = comp,trms = c('regula'), ID="ensembl", minEnrich = 0.3, topNodes = 20, colMatch = '#008000', colNoMatch = 'grey35')
+dev.off()
+```
+```{r}
+knitr::include_graphics(pdf_name)
+```
+
+
+### transcriptome signature 
+
+```{r}
+ome=c("methylome", "transciprome")[2]
+```
+
+#### component 1
+
+```{r}
+comp=1
+```
+
+```{r}
+dat <- ifelse(ome=="methylome", "X", "Y")
+pdf_name <- sprintf('img/sPLS-%s-%s-%s-comp%s.pdf', mode,ome, methylome,comp)
+pdf(file = pdf_name, width = 8, height = 5)
+goEnrich(spls.obj = spls.obj, dat = dat, comp = comp,trms = c('regulat'), ID="ensembl", minEnrich = 0.4, topNodes = 20, colMatch = '#008000', colNoMatch = 'grey35')
+dev.off()
+```
+```{r}
+knitr::include_graphics(pdf_name)
+```

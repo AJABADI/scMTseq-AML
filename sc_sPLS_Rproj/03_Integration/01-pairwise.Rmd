@@ -1,0 +1,272 @@
+---
+title: "Integration"
+params:
+  cache: FALSE
+  echo: TRUE
+  run_spec: '.' ## INPUT to be stored ine log file for the run
+  
+  ## an parameter list should follow exactly the following format
+  IN: !r list(
+    met_expr = '../02_Methylation/02_QC_Methylation/met_exp.Rds',
+    utils = '../utils/utils.R',
+    anno_dir = '../../data/scBSseq/filt')
+    
+  OUT: !r list(
+    dir='.',
+    img = './img')
+  
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+## source libraries and functions
+source(params$IN$utils)
+library(data.table)
+library(ggplot2)
+ggplot2::theme_set(theme_bw())
+```
+
+```{r}
+## check files and directories exist
+check_files_exist(params$IN)
+dir.exists(params$OUT$dir)
+if(!dir.exists(params$OUT$img)){
+  dir.create(params$OUT$img)
+}
+```
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r}
+met_exp <- readRDS(params$IN$met_expr)
+var_met_exp <- met_exp %>% .[!duplicated(.[,c('anno', 'id')])]
+annotations <- unique(met_exp$anno) %>% .[!. %in% "intergenic"]
+```
+
+Pairwise correlations - values
+
+```{r, eval=FALSE}
+tp <- system.time({
+  pearson_genewise <- list()
+for (annot in annotations){
+  message(annot)
+  dt <- met_exp[!is.na(expression)][anno==annot]
+  expr<- dcast.data.table(dt,id~sample, value.var = 'expression' )
+  methyl <- dcast.data.table(dt,id~sample, value.var = 'rhat' )
+
+  ## TODO add weights here
+  suppressWarnings( pearson_genewise[[annot]] <- sapply(unique(expr$id), FUN = function(x) cor(as.numeric(expr[id==x]), as.numeric(methyl[id==x]), use = "pairwise.complete.obs")))
+}
+})
+
+
+file_backup("pearson_genewise.Rds", run_spec = 'No filtering on coverage')
+saveRDS(pearson_genewise, file="pearson_genewise.Rds")
+```
+
+
+
+```{r, eval=FALSE}
+pearson_genewise <- readRDS("pearson_genewise.Rds")
+
+list2df <- function(x){
+  do.call(cbind, lapply(lapply(x, unlist), "[",
+              unique(unlist(c(sapply(x,names))))))
+}
+
+pearson_value <- list2df(pearson_genewise)
+pearson_value <- melt(pearson_value) %>% set_colnames(c('id', 'anno','correlation')) %>% data.table()
+file_backup(file = 'pearson_value.Rds',where = NA, run_spec = 'apparently the one saved before only had the class data.frame')
+saveRDS(pearson_value, file='pearson_value.Rds')
+# file_backup('pearson_all.Rds', run_spec = 'data.frame of pearson correlation for all annotations with ids having coverage more than median')
+```
+```{r}
+pearson_value <- readRDS('pearson_value.Rds')
+```
+
+```{r}
+# png(file='img/pairwise-pearson-AML-all.png', width = 1200, height = 700, res=250)
+pdf(file='img/pairwise-pearson-AML-all.pdf', width = 6, height = 4)
+gg_box(pearson_value[anno!='prom'], aesX = 'anno', aesY = 'correlation',x='', y='Pearson correlation', title='' )
+dev.off()
+```
+
+```{r}
+## genomic ranges
+annos <- list.files(params$IN$anno_dir, pattern ='.bed', full.names = TRUE)
+anno_list <- list()
+for (bed_file in annos){
+  anno <- parent_base_ext(bed_file)$base
+   anno_list[[anno]] <- fread(bed_file ,sep="\t", header=F, verbose=F) %>%
+    ## remove the  annotation
+    .[,c(-6)] %>%
+    ## rename the columns
+    setnames(c("chr","start","end","strand","id"))
+}
+
+```
+
+
+
+
+```{r}
+
+## GOE on these compared to all genes might actually be insightful
+anno_vec <- anno_plot_vec(pearson_value)
+anns <- structure(levels(anno_vec), names=names(anno_vec))
+omics <- structure(c("BSseq", "RNAseq"), names=c("X", "Y"))
+
+
+spls_genes <- function(comps=c(1,2,3), annots=names(anns)){
+  annot_out <-  list()
+  for (annot in annots){
+    comp_out <- list()
+    for (comp in comps){
+      sig_ranges <- plots <- list()
+    for (omic in names(omics)){ ## X and Y
+      dataset <- omics[[omic]] ## RNAseq or BSseq
+      
+      sigs <- selectVar(object=list_spls$canonical$fullset[[annot]], comp=comp)[[omic]]$name
+      sig_ranges <- data.frame(anno_list[[annot]], row.names = 'id')[sigs,][,c('chr', 'start', 'end', 'strand')]
+      plots <- gg_box(pearson_value[id %in% sigs], aesX = 'anno', aesY = 'correlation',x='', y='Pearson correlation',
+             title=paste0(anns[[annot]],' Signature - ',dataset,' - Component ', comp)) + geom_hline(yintercept = 0,lwd=1, lty=6)
+      comp_out[[paste0('comp_',comp)]][[dataset]] <- list(plots=plots, signature=sig_ranges)
+      }
+  }
+  annot_out[[annot]] <- comp_out
+  }
+return(annot_out)
+  # gg_box(pearson_value[id %in% sig_genes[['rna']]], aesX = 'anno', aesY = 'correlation',x='', y='Pearson correlation', title='Promoter Signature - RNAseq - Component 1' )
+}
+spls_out <- spls_genes()
+saveRDS(spls_out, file="spls_out.Rds")
+save(spls_out, file='~/Desktop/sPLS-results-aml/sPLS_scMTseq/spls_out.RData')
+```
+
+Pairwise correlations - variances
+
+```{r}
+# pearson_tot.var_genewise <- pearson_bio.var_genewise <-list()
+# for (annot in annotations){
+#   if(annot=="intergenic") next
+#   message("processing ",annot)
+#   var_dt <- var_met_exp[!is.na(expression) & !is.na(lci) ][anno==annot]
+#   pearson_tot.var_genewise[[annot]] <- cor(as.numeric(var_dt$lci), as.numeric(var_dt$total))
+#   pearson_bio.var_genewise[[annot]] <- cor(as.numeric(var_dt$lci), as.numeric(var_dt$bio))
+# }
+```
+
+```{r}
+# pearson_tot.var_genewise <- pearson_bio.var_genewise <-list()
+# for (annot in annotations){
+#   if(annot=="intergenic") next
+#   message("processing ",annot)
+#   var_dt <- var_met_exp[!is.na(expression) & !is.na(lci) ][anno==annot]
+#   vs <- summary(var_dt$lci)
+#   hvgs <- var_dt[lci>vs[5]]
+#   interq <- var_dt[lci>=vs[2] & lci <=vs[5]]
+#   pearson_tot.var_genewise$hvgs[[annot]] <- cort(as.numeric(hvgs$lci), as.numeric(hvgs$total))
+#   pearson_tot.var_genewise$interq[[annot]] <- cor(as.numeric(interq$lci), as.numeric(interq$total))
+#   
+#   pearson_bio.var_genewise$hvgs[[annot]] <- cor(as.numeric(hvgs$lci), as.numeric(hvgs$bio))
+#   pearson_bio.var_genewise$interq[[annot]] <- cor(as.numeric(interq$lci), as.numeric(interq$bio))
+# }
+```
+
+```{r}
+cor_lst <- list()
+cor_lst$all$tot <- cor_lst$all$bio <-  cor_lst$hvgs$tot <- 
+  cor_lst$hvgs$bio <- cor_lst$interq$tot <- cor_lst$interq$bio <- 
+  data.frame(row.names = annotations[annotations !="intergenic"])
+    
+for (annot in annotations){
+  if(annot=="intergenic") next
+  message("processing ",annot)
+  var_dt <- var_met_exp[!is.na(expression) & !is.na(lci) ][anno==annot]
+  vs <- summary(var_dt$lci)
+  hvgs <- var_dt[lci>vs[5]]
+  interq <- var_dt[lci>=vs[2] & lci <=vs[5]]
+  
+  cor_lst$all$tot[annot,c("p.value", "pearson")] <- cor.test(as.numeric(var_dt$lci), as.numeric(var_dt$total))[c("p.value", "estimate")]
+  cor_lst$all$bio[annot,c("p.value", "pearson")] <- cor.test(as.numeric(var_dt$lci), as.numeric(var_dt$bio))[c("p.value", "estimate")]
+  
+  cor_lst$interq$tot[annot,c("p.value", "pearson")] <- cor.test(as.numeric(interq$lci), as.numeric(interq$total))[c("p.value", "estimate")]
+  cor_lst$interq$bio[annot,c("p.value", "pearson")] <- cor.test(as.numeric(interq$lci), as.numeric(interq$bio))[c("p.value", "estimate")]
+  
+  cor_lst$hvgs$tot[annot,c("p.value", "pearson")] <- cor.test(as.numeric(hvgs$lci), as.numeric(hvgs$total))[c("p.value", "estimate")]
+  cor_lst$hvgs$bio[annot,c("p.value", "pearson")] <- cor.test(as.numeric(hvgs$lci), as.numeric(hvgs$bio))[c("p.value", "estimate")]
+  
+}
+```
+
+```{r}
+## function to plot correlation b/w variances from a named correlation list
+gg_var_pearson <- function(df=cor_lst$hvgs$tot, lim.y=0.1, main=""){
+  anno_vec <- anno_plot_vec(pearson_value)
+  lim.y <- max(abs(lim.y), max(abs(df$pearson)))
+  y.lim <- c(-lim.y, lim.y)
+  ggplot(df) + geom_col(aes(y=pearson, x=rownames(df), fill=rownames(df))) +
+    geom_text(aes(y=(pearson+0.005*sign(pearson)), x=rownames(df), label=paste0("p-value: ", round(p.value,2))), col="grey50") +
+    scale_fill_manual(values = anno_vec, label=levels(anno_vec), guide_legend(title="Context"))+
+    labs(x="", y="Pearson correlation", title = main) + ylim(y.lim)
+}
+```
+
+
+```{r}
+# ## function to plot correlation b/w variances from a named correlation list
+# gg_var_pearson <- function(cor_list, lim.y=0.1, main=""){
+#   anno_vec <- anno_plot_vec(pearson_value)
+#   vec <- unlist(cor_list)
+#   lim.y <- max(abs(lim.y), max(abs(vec)))
+#   y.lim <- c(-lim.y, lim.y)
+#   ggplot() + geom_col(aes(x=names(vec), y=vec, fill=names(vec))) + 
+#    scale_fill_manual(values = anno_vec, label=levels(anno_vec), guide_legend(title="Context"))+
+#   labs(x="", y="Pearson correlation", title = main) + ylim(y.lim)
+# }
+```
+
+```{r}
+## all genes
+gg_var_pearson(cor_lst$all$tot, main = "total variance")
+gg_var_pearson(cor_lst$all$bio, main = "biological variance")
+```
+
+```{r}
+## interquartile
+gg_var_pearson(cor_lst$interq$tot, main = "interquartile region - total variance")
+gg_var_pearson(cor_lst$interq$bio, main = "interquartile region - biological variance")
+```
+
+```{r}
+## outliers
+gg_var_pearson(cor_lst$hvgs$tot, main = "upper 25th %-ile - total variance")
+gg_var_pearson(cor_lst$hvgs$bio, main = "upper 25th %-ile - biological variance")
+```
+
+## lci
+
+is there still an association b/w lci and CpG density and/or coverage even after using the CI's? 
+
+```{r}
+ggplot(as.data.frame(var_met_exp[anno=="prom"])) + geom_point(aes(x=cpg_cov, y=lci))
+ggplot(as.data.frame(var_met_exp[anno=="prom_cgi"])) + geom_point(aes(x=cpg_cov, y=lci))
+ggplot(as.data.frame(var_met_exp[anno=="prom_noncgi"])) + geom_point(aes(x=cpg_cov, y=lci))
+```
+
+```{r}
+## lci cor w/ cpg density: negative in CpG dense regions and positive in others
+var_met_exp[,c("cor_lci_dens", "p.value"):=cor.test(lci, cpg_density)[c("estimate", "p.value")], by=anno] %>%  .[!duplicated(.[,anno])] %>% .[,c("anno","cor_lci_dens", "p.value")]
+
+```
+```{r}
+## lci cor w/ cpg coverage: negative in prom_cgi - not a strong bias apparently but
+var_met_exp[,c("cor_lci_cov", "p.value"):=cor.test(lci, cpg_cov)[c("estimate", "p.value")], by=anno] %>%  .[!duplicated(.[,anno])] %>% .[,c("anno","cor_lci_cov", "p.value")]
+```
+

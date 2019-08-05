@@ -22,7 +22,8 @@ knitr::opts_chunk$set(cache=io$chunk$cache, echo=io$chunk$echo,  cache.comment=F
 
 For cell matching scBSseq:
 
-  * [QC](./01_Transcriptome/01_QC_Transcriptome/01_QC_Transcriptome.html)
+  * [QC all cells](./01_Transcriptome/01_QC_Transcriptome/01_QC_Transcriptome_all_cells.html)
+  * [QC matching cells](./01_Transcriptome/01_QC_Transcriptome/01_QC_Transcriptome.html)
   * [Dimension Reduction](./01_Transcriptome/02_DimensionReduction_Transcriptome/02_DimensionReduction_Transcriptome.html)
 
 # Methylation

@@ -1,0 +1,112 @@
+---
+title: Transcriptome QC and Normalisation - all cells
+output:
+  html_document:
+        toc: yes
+---
+
+```{r, echo=FALSE}
+## input/output setup
+io <- list()
+io$chunk$cache <- !TRUE
+io$chunk$echo <-FALSE
+
+knitr::opts_chunk$set(cache=io$chunk$cache, echo=io$chunk$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r, cache=FALSE}
+## source directory
+source_dir <- '../../utils'
+R_files <- list.files(source_dir, pattern = '.R$', full.names = TRUE) ## all files ending in .R
+invisible(lapply(R_files, base::source))
+
+source("../../all_libs.R")
+io$opts$min_cells_expr <- 0.25 ## homogeneous population
+io$opts$min_log10exp <- 0.7 ## minimum log expression based on lib size histpgram
+io$input$rna_raw <- '../../../data/scRNAseq/raw/Kasumi1_scRNAseq_RawCounts.txt'
+io$output$rna_sce_normalised_all_cells <- '../../../output/parsed/rna_sce_normalised_all_cells.Rds'
+## check that files exist
+check_files_exist(io$input)
+```
+
+<!-- ## Load Raw Data -->
+
+```{r tablecounts}
+## read raw scRNAseq counts
+counts_raw <- read.csv(io$input$rna_raw, row.names = 1)
+## change the cell names based on well names
+colnames(counts_raw) <- name_cells_by_wells(colnames(counts_raw), underscores = c(1,2))
+## create sce object from raw counts
+rna_sce <- SingleCellExperiment(assays = list(counts = as.matrix(counts_raw)))
+```
+
+```{r qc}
+## add QC metrics
+rna_sce <- scater::calculateQCMetrics(rna_sce)
+## filter undetected genes and add percent of genes detected in colData
+rna_sce <- sce_detected_genes(rna_sce)
+```
+
+
+## Gene QC
+
+To filter genes with high level of dropouts, genes to have a log mean expression of at least `r io$opts$min_log10exp`:
+
+```{r}
+## gene QC
+gene_metrics <- as.data.frame(rowData(rna_sce)) ## a data.frame of gene metrics
+
+## filter the first peak of non-zero values
+hist <- hist(gene_metrics$log10_mean_counts, prob=TRUE, breaks = 100, col = 'grey80',
+            main= 'Histogram of log10 mean counts', xlab = 'log10[mean counts] for each gene')
+abline(v=io$opts$min_log10exp, col='red', lwd=2)
+```
+```{r}
+rna_sce %<>% .[rowData(.)$log10_mean_counts>=io$opts$min_log10exp,]
+```
+
+```{r, echo=TRUE, results='show'}
+dim(rna_sce)
+```
+
+```{r}
+## recalculate QC metrics
+rna_sce <- scater::calculateQCMetrics(rna_sce)
+rna_sce <- sce_detected_genes(rna_sce)
+```
+
+## Cell QC
+
+Cells to express at least `r io$opts$min_cells_expr*100` percent of genes:
+
+```{r}
+cell_qc_out <- cell_qc(sce = rna_sce, pct_genes_in_cells = 100*io$opts$min_cells_expr)
+cell_qc_out$plot
+```
+
+`r ifelse(dim(rna_sce)[2]==dim(cell_qc_out$sce)[2], paste0('No cell filtering needed. Minimum percent of genes expressed: ', round(min(rna_sce$pct_total_features_by_counts)),'% .'), paste0('Number of cells that passed filtering: ', dim(cell_qc_out$sce)[2],'.'))`
+
+```{r}
+rna_sce <- cell_qc_out$sce
+```
+
+```{r, echo=TRUE, results='show'}
+dim(rna_sce)
+```
+```{r}
+## normalise using scran
+rna_sce <- computeSumFactors(rna_sce) ## add size factors
+rna_sce <- normalize(rna_sce) ## normalise
+```
+
+## Size Factors
+
+```{r}
+plot(sizeFactors(rna_sce), rna_sce$total_counts/1e6, log='xy', pch=16, col='purple',
+    ylab='Library size (x 1e6)', xlab='Size factor', main = 'Scran Size Factors')
+```
+```{r}
+saveRDS(rna_sce, file=io$output$rna_sce_normalised_all_cells)
+```
+

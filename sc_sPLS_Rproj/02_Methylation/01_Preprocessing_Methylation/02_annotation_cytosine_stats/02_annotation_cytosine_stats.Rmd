@@ -1,0 +1,54 @@
+---
+title: "Annotation of genomic regions"
+params:
+  cache: FALSE
+  echo: TRUE
+  subset: FALSE ## FALSE or an integer to subset bed files up tp
+  chrs: !r c(1:22,"MT") ## chromosomes in genome to use - must be a vector (not just a number)
+  anno_list_rds: 'anno_list.Rds'  ## name of the genome stat file
+  run_spec: 'added the enhancers (from FANTOM) as well using enhancer_proc.R' ## to be stored ine log file for the run
+  anno_dir: "../../../../data/scBSseq/filt" ## where bed files are, all of which will be used
+  annos: !r c("genebody", "prom_cgi", "prom_noncgi", "prom", "intergenic", "enhancer")
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, purl=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide', eval=TRUE)
+```
+
+
+```{r}
+source('../../../utils/utils.R') ## functions
+source('../_libs.R') ## libraries
+```
+
+### Annotation Cytosine Stats
+
+```{r}
+anno_list <- readRDS(params$anno_list_rds)
+annos <- list.files(params$anno_dir, pattern ='.bed', full.names = TRUE)
+
+for (i in 1:length(annos)) {
+  name <- sub(".bed", "", basename(annos[i]))
+  anno_list[[name]] <- read_bed(bed_file = annos[i],genome = BSgenome.Hsapiens.UCSC.hg38, valid_chrs = params$chrs, subset = params$subset)
+}
+```
+
+```{r}
+  name <- sub(".bed", "", basename(annos[i]))
+  anno_list[[name]] <- read_bed(bed_file = annos[i],genome = BSgenome.Hsapiens.UCSC.hg38, valid_chrs = params$chrs, subset = params$subset)
+```
+
+
+```{r}
+if(!params$subset){
+  file_recorder(outFile = params$anno_list_rds, logFile = 'anno_list', logFolder = '__log',
+              run_spec = params$run_spec) ## update the run spec from params for a new run
+
+  saveRDS(anno_list, file = params$anno_list_rds)
+  ##TODO intergenic does not have strand info (*) while calls do --> only the CpG context makes sense
+}
+```

@@ -1,0 +1,115 @@
+---
+title: Transcriptome Dimension Reduction
+output:
+  html_document:
+        toc: yes
+---
+
+
+```{r, echo=FALSE}
+## input/output setup
+io <- list()
+io$chunk$cache <- !TRUE
+io$chunk$echo <-FALSE
+
+knitr::opts_chunk$set(cache=io$chunk$cache, echo=io$chunk$echo,  cache.comment=FALSE, fig.align = 'center',
+                      message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r, cache=FALSE}
+## source directory
+source_dir <- '../../utils'
+R_files <- list.files(source_dir, pattern = '.R$', full.names = TRUE) ## all files ending in .R
+invisible(lapply(R_files, base::source))
+
+io$input$rna_sce_normalised_all_cells <- '../../../output/parsed/rna_sce_normalised_all_cells.Rds'
+## check that files exist
+check_files_exist(io$input)
+io$opts$top_hvgs = 500
+io$opts$pcs = 5
+## load
+rna_sce <- readRDS(io$input$rna_sce_normalised_all_cells)
+```
+```{r}
+## veriance decomosition
+rna_sce %<>% sce_var_decomp()
+```
+
+## Variance vs Mean Expression
+
+```{r}
+plot_trendvar(rna_sce)
+```
+
+## All Genes
+
+### PCA
+
+```{r}
+## pca
+pca_res_all = pca(t(logcounts(rna_sce)), ncomp = io$opts$pcs)
+```
+```{r, out.width="100%"}
+## plot
+pca_grid(pca_obj = pca_res_all, top = 'PCA plots - all genes', point_label = TRUE)
+```
+
+### Hierarchical Clustering
+
+```{r, cache=TRUE}
+plotHeatmap(rna_sce, features = rownames(rna_sce), main = paste0( 'Clustered heatmap of scRNAseq data \n cells at the bottom and genes on the side'))
+```
+
+## Top HVGs - Total Variance
+
+Dimension reduction using top `r io$opts$top_hvgs` hvgs based on total variance:
+
+```{r}
+rna_sce_hvg_total = sce_subset(rna_sce, row_data = 'total',
+                                          n_top = io$opts$top_hvgs)
+```
+
+### PCA
+
+```{r}
+## pca
+pca_res_hvgs_total = pca(t(logcounts(rna_sce_hvg_total)), ncomp = io$opts$pcs)
+```
+```{r, out.width="100%"}
+## plot
+pca_grid(pca_obj = pca_res_hvgs_total, top = 'PCA plots - top HVGs - total variance')
+```
+
+
+### Hierarchical Clustering
+
+```{r, cache=TRUE}
+rna_sce_hvg_total %>%  plotHeatmap(., features = rownames(.), main = paste0( 'Clustered heatmap of scRNAseq data using HVGs based on total variance'))
+```
+
+## Top HVGs - Decomposed Biological Variance
+
+Dimension reduction using top `r io$opts$top_hvgs` hvgs based on decomposed biological variance:
+
+```{r}
+rna_sce_hvg_bio = sce_subset(rna_sce, row_data = 'bio',
+                                          n_top = io$opts$top_hvgs)
+```
+
+### PCA
+
+```{r}
+## pca
+pca_res_hvgs_bio = pca(t(logcounts(rna_sce_hvg_bio)), ncomp = io$opts$pcs)
+```
+```{r, out.width="100%"}
+## plot
+pca_grid(pca_obj = pca_res_hvgs_bio, top = 'PCA plots - top HVGs - bio. variance')
+```
+
+### Hierarchical Clustering
+
+```{r, cache=TRUE}
+rna_sce_hvg_bio %>%  plotHeatmap(., features = rownames(.), main = paste0( 'Clustered heatmap of scRNAseq data using HVGs based on bio. variance'))
+```
+

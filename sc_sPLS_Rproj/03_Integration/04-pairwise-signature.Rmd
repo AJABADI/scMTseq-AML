@@ -1,0 +1,127 @@
+---
+title: "Integration"
+params:
+  cache: FALSE
+  echo: TRUE
+  run_spec: '.' ## INPUT to be stored ine log file for the run
+  
+  ## an parameter list should follow exactly the following format
+  IN: !r list(
+    met_expr = '../02_Methylation/02_QC_Methylation/met_exp.Rds',
+    utils = '../utils/utils.R'
+    )
+    
+  OUT: !r list(
+    dir='.',
+    img = './img')
+  
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+## source libraries and functions
+source(params$IN$utils)
+library(data.table)
+library(ggplot2)
+# source('/Users/alabadi/Documents/_Projects/_Personal/someWrappers/R/file_backup.R')
+```
+
+```{r}
+## check files and directories exist
+check_files_exist(params$IN)
+dir.exists(params$OUT$dir)
+if(!dir.exists(params$OUT$img)){
+  dir.create(params$OUT$img)
+}
+```
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+```{r}
+met_exp <- readRDS(params$IN$met_expr)
+var_met_exp <- met_exp %>% .[!duplicated(.[,c('anno', 'id')])]
+```
+
+Pairwise correlations - values
+
+```{r, eval=FALSE}
+annotations <- unique(met_exp$anno) %>% .[!. %in% "intergenic"]
+
+tp <- system.time({
+  pearson_genewise <- list()
+for (annot in annotations){
+  message(annot)
+  dt <- met_exp[!is.na(expression)][anno==annot]
+  expr<- dcast.data.table(dt,id~sample, value.var = 'expression' )
+  methyl <- dcast.data.table(dt,id~sample, value.var = 'rhat' )
+
+  ## TODO add weights here
+  suppressWarnings( pearson_genewise[[annot]] <- sapply(unique(expr$id), FUN = function(x) cor(as.numeric(expr[id==x]), as.numeric(methyl[id==x]), use = "pairwise.complete.obs")))
+}
+})
+
+# tp*8200/sub
+file_backup("pearson_genewise.Rds", run_spec = 'No filtering on coverage')
+saveRDS(pearson_genewise, file="pearson_genewise.Rds")
+```
+
+Pairwise correlations - variances
+
+```{r}
+pearson_tot.var_genewise <- pearson_bio.var_genewise <-list()
+for (annot in annotations){
+  message(annot)
+  var_dt <- var_met_exp[!is.na(expression) & !is.na(lci) ][anno==annot]
+  pearson_tot.var_genewise[[annot]] <- cor(as.numeric(var_dt$lci), as.numeric(var_dt$total))
+  pearson_bio.var_genewise[[annot]] <- cor(as.numeric(var_dt$lci), as.numeric(var_dt$bio))
+}
+```
+
+
+```{r, eval=FALSE}
+pearson_genewise <- readRDS("pearson_genewise.Rds")
+
+list2df <- function(x){
+  do.call(cbind, lapply(lapply(x, unlist), "[",
+              unique(unlist(c(sapply(x,names))))))
+}
+
+pearson_value <- list2df(pearson_genewise)
+pearson_value <- melt(pearson_value) %>% set_colnames(c('id', 'anno','correlation')) %>% data.table()
+file_backup(file = 'pearson_value.Rds',where = NA, run_spec = 'apparently the one saved before only had the class data.frame')
+saveRDS(pearson_value, file='pearson_value.Rds')
+# file_backup('pearson_all.Rds', run_spec = 'data.frame of pearson correlation for all annotations with ids having coverage more than median')
+```
+```{r}
+pearson_value <- readRDS('pearson_value.Rds')
+```
+
+
+```{r}
+annos <-  unique(met_exp$anno)
+contexts <-  c(genebody="Genebody", intergenic="Intergenic", prom="Promoter",prom_cgi="Promoter-CGI", prom_noncgi="Promoter-nonCGI")
+
+my_col <- gg_color_hue(length(annos))
+names(my_col) <- annos
+levels(my_col) <- contexts
+```
+
+
+```{r}
+ggplot(as.data.frame(pearson_value[id %in% selectVar(object=list_spls$canonical$fullset$prom, comp=1)$X$name])) + 
+  geom_boxplot(aes(x=anno, y=correlation, fill=anno, col=anno), na.rm = TRUE, alpha=0.7, show.legend=FALSE) + 
+  labs(x="", y="Peasron Correlation", title="") + theme_bw() + geom_hline(yintercept = 0, linetype=3, col='red') +
+   scale_fill_manual(values = my_col, label=levels(my_col), guide_legend(title="Context")) +
+    scale_color_manual(values = my_col, label=levels(my_col), guide_legend(title="Context")) +
+    scale_x_discrete(labels=contexts) + theme(axis.text.x = element_text(face="bold")) + coord_flip()
+# ggsave(filename = 'img/pearson-value-pairwise.pdf')
+```
+
+
+

@@ -1,0 +1,202 @@
+---
+title: "Overlapping calls with regions"
+params:
+  cache: FALSE
+  echo: TRUE
+  subset: FALSE ## only for test run: how many rows to keep, FALSE for full run
+  chrs: !r c(1:22,"MT") ## INPUT chromosomes in genome to use - must be a vector (not just a number)
+  anno_list_rds: '../02_annotation_cytosine_stats/anno_list.Rds'  ## INPUT name of the genome stat file
+  run_spec: 'on HPC - first run after removing non-CpGs' ## INPUT to be stored ine log file for the run
+  anno_dir: "../../../../data/scBSseq/filt" ## INPUT where bed files are, all of which will be used
+  base_dir: '../../../../data/scBSseq'
+  context_keep: "CpG" ## INPUT either one at a time or also key by c_context
+  met_merged: '../../../../data/scBSseq/met/met_merged' ## OUTPUT merged methylation file - without tsv extension
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE, purl=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide', eval=TRUE)
+```
+
+
+```{r}
+source('../../../utils/utils.R') ## functions
+source('../_libs.R') ## libraries
+```
+
+```{r}
+anno_list <- readRDS(params$anno_list_rds)
+```
+
+<!-- Add CGIs -->
+
+<!-- ```{r} -->
+<!-- CGI <- read.table('../../../../data/scBSseq/filt/cpgIslandExt.txt') %>%  -->
+<!--   .[,2:4] %>% set_colnames(c('chr', 'start', 'end')) %>% data.table() %>% .[,chr:=chr_conv(chr, style = 'ensembl')] %>% .[,id:=sprintf('CGI_%s_%s', chr, end)] -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- ## for this one, you have to manually handle the foverlaps -->
+<!-- anno_list$CGI <- CGI -->
+<!-- ``` -->
+
+
+```{r, cache=FALSE}
+io <- list()
+## input and outputs files and directories
+## bismark (.cov) files
+io$in_folder <- str_c(params$base_dir,"/met/parsed/cov_context/")
+io$out_folder <- str_c(params$base_dir,"/met/parsed") ## ouput
+
+io$out_tmp <- sprintf("%s/tmp",io$out_folder) ## temporray dir for individual sample annotations
+dir.create(io$out_tmp, recursive=T)
+
+## check that input/output files/dir.s exists
+check_dir = function(dir,file_ext=NULL){
+   if(!dir.exists(dir)) stop('\n directory ',dir,' does not exist')
+    if(!is.null(file_ext)){
+      if(!length(list.files(dir, pattern=file_ext))) stop('\n no ',file_ext,' files found in ',dir)
+    }
+}
+
+check_dir(io$out_folder)
+check_dir(io$in_folder, '.cov')
+```
+
+## Processing Annotations
+
+```{r, purl=TRUE}
+## whether to calculate over fixed legth windows as well
+# opts$windows <- list()
+# opts$windows$calc <- FALSE
+# opts$windows$width <- 3000L ## the tile/sliding window width; numeric or NULL
+# opts$windows$step <- c(600L,1500L, 3000L) ## the sliding window step; numeric (/vector) or NULL; for non-overlapping step=width
+# opts$windows$strand <- "+" ## "+" or "-"
+```
+
+
+```{r}
+## samples
+samples_keep <- sapply(str_split(list.files(io$in_folder, pattern = "\\.cov$"),"\\.cov"),"[[", 1)
+stopifnot(all(!duplicated(samples_keep)))
+```
+
+
+```{r}
+cgi <- list()
+############ for each cell
+for (i in seq_along(samples_keep)) {
+  sample=samples_keep[i]
+############ Read and parse raw methylation data (cov files)
+  dat_sample <- fread(paste0(io$in_folder,'/',sample, '.cov'), sep="\t",
+                        header="auto", verbose=F, showProgress=F)
+############ glimpse at file
+    # head(dat_sample)
+        #        V1    V2    V3  V4 V5 V6
+        # 1: 12 10319 10319 100  1  0
+        # 2: 12 12092 12092 100  1  0
+        # 3: 12 12866 12866 100  1  0
+        # 4: 12 12885 12885 100  1  0
+        # 5: 12 12910 12910 100  1  0
+        # 6: 12 15120 15120 100  1  0
+############ drop the calculated rate and re-calculate assuming a binomial distribution like Ricard's
+    dat_sample %<>% .[chr %in% params$chrs,] %>% 
+      .[c_context %in% params$context_keep] %>% 
+      .[,r:=round(rate_ML/100)]
+
+    if(params$subset){
+      dat_sample %<>% .[1:params$subset,]
+    }
+    
+    ############ overlap data with annotations
+
+    anno="CGI"
+    # for (anno in names(anno_list)["CGI"]) {
+      ## full name of the .tsv output
+      fname.out <- sprintf("%s/%s_%s.tsv",io$out_tmp,sample,anno)
+      ## check it is not there already
+      if (file.exists(paste0(fname.out,".gz"))) {
+        cat(sprintf("Annotation for %s with %s already found, loading...\n",sample,anno))
+      } else {
+        cat(sprintf("Annotating %s with %s annotations...\n",sample,anno))
+
+        ## overlap - genomic context
+        anno_list[[anno]] %>% setkey(chr, start, end)
+        dat_sample %>% .[,chr:=as.factor(chr)] %>%  ## chr must be the same class (here factor) in both
+          setkey(NULL)
+        ov <- foverlaps(dat_sample, anno_list[[anno]], nomatch=0) %>%
+          ## you get
+          ## head(ov)
+          #    chr start    end              id cpg_content cpg_density i.start i.end calls rate
+          # 1:  12 66765 178460 ENSG00000120645        2069  0.01852349   66776 66776     1    0
+          # 2:  12 66765 178460 ENSG00000120645        2069  0.01852349   66792 66792     1    0
+          # 3:  12 66765 178460 ENSG00000120645        2069  0.01852349   66797 66797     1    0
+          # 4:  12 66765 178460 ENSG00000120645        2069  0.01852349   66801 66801     1    0
+          # 5:  12 66765 178460 ENSG00000120645        2069  0.01852349   66820 66820     1    0
+          # 6:  12 66765 178460 ENSG00000120645        2069  0.01852349   66822 66822     1    0
+
+           ## remove the duplicate end column and rename i.start
+          .[,`:=`(i.end=NULL)] %>% setnames("i.start","pos")
+
+############  calculate methylation status for each region in the annotation by summarising over all sites
+        out <- ov[,c("sample","anno") := list(sample,anno)] %>% ## add sample and anno columns
+          ## for each sample, for each gene, and each annotation set 'calls_methylated' as the
+          ## number of calls where majority were 1 (rate>=50%)
+          ## and set 'calls_total' as the total number of observations within that context for that sample and annotation
+          ## assuming a rate for every site as an observation for the uniform RV 'rate' of the context, ML averages
+          ## the rates which is what Ricard did.
+          .[,.(calls_m=sum(r), calls=.N), keyby=.(sample,id,anno)] %>%
+          ## add rate_binom following Smalwood's method
+          .[,rhat:=round((calls_m+1)/(calls+2)*100,3)]
+        ## keep chromosome info for filtering and assessment
+        out <- merge(out,
+                     # anno_list[[anno]][,c("id","chr")],
+                     anno_list[[anno]][,c("id","chr","cpg_content", "cpg_density")],
+                     by="id"
+                     )
+        out[,chr:=NULL][,sample:=name_cells_by_wells(sample,underscores = c(0,1))][,cpg_cov:=calls/cpg_content]
+        # Store and save results
+        cgi[[substring(sample,0,2)]] <- out
+        # fwrite(out, fname.out, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+      }
+    # }
+}
+
+```
+
+```{r}
+## for CGI manual
+do.call(rbind, cgi)-> DTcgi
+DTcgi[, cell_cov:=.N, by=id]
+saveRDS(DTcgi, '../../../../data/scBSseq/met/CGIwithStats.rds')
+```
+
+```{r}
+## concatenate everything and save it
+cat("Annotations finished, combining results...\n")
+files <- list.files(io$out_tmp, pattern=".tsv")
+foo <- lapply(files, function(f) fread(paste0(io$out_tmp,'/',f))) %>% rbindlist
+## file name by defualt
+file_name <- params$met_merged
+## file name for test run
+if(params$subset){
+  file_name <- paste0(file_name,"_test")
+}
+file_name <- str_c(file_name,".tsv")
+## record and log the previous file if not a test run
+if(!!params$subset){
+  file_recorder(outFile = params$met_merged, logFile = 'met_merged', logFolder = '__log',
+              run_spec = params$run_spec) ## update the run spec from params for a new run
+}
+## write the merged file
+write.table(foo, file_name, quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE)
+## if a test run, remove the individual files
+if(params$subset){
+  file.remove(list.files(io$out_tmp, pattern = '.tsv', full.names = TRUE))
+}
+```
+
+
+

@@ -10,23 +10,28 @@
 # 6:     A5 ENSG00000001084 genebody   38    197
 
 
-met_sce = function(met=met_dt, ## the data.table of the above format
+met_sce = function(met=met_all, ## the data.table of the above format
                    annot="genebody", ## one of unique(met$anoo)
-                   # tot_c = NULL, ## TODO whether we need the total number of CG's in the context
-                   cov = 0.1){
+                   cov = 0){
   ## entry check
   stopifnot(all(inherits(met, "data.table"),
                 inherits(annot, "character"),
-                is.null(tot_c) |inherits(tot_c, "character"),
+                # is.null(tot_c) |inherits(tot_c, "character"),
                 cov>=0&cov<=1))
-  run_time = system.time({ ## record run time
+  run_time <- system.time({ ## record run time
   ## subset by annotation
-  met.anno = met[anno==annot]
+  met_anno <- met[anno==annot][,anno:=NULL]
+  
+  
+  ## subset by c context
+  met_anno_cpg <- met_anno[c_context=="CpG"][,c_context:=NULL]
+  met_anno_cph <- met_anno[c_context=="CpH"][,c_context:=NULL]
+  
   ## weighted variance
-  vhat = met.anno[,lapply(.SD,function(x)(weightedVar(as.numeric(x),w=weight))),by=id,.SDcols='rate']
+  vhat = met_anno[,lapply(.SD,function(x)(weightedVar(as.numeric(x),w=weight))),by=id,.SDcols='rate']
   colnames(vhat)[2] = "vhat"
   ## weighted rate
-  rbar = met.anno[,lapply(.SD,weighted.mean,w=weight),by=id,.SDcols='rate']
+  rbar = met_anno[,lapply(.SD,weighted.mean,w=weight),by=id,.SDcols='rate']
   colnames(rbar)[2] = "rbar"
   ## merge and make df
   wtd_arith = merge(rbar, vhat) %>% data.frame(row.names = "id")

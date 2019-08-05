@@ -1,0 +1,35 @@
+---
+title: "Genome C Trinucleotide Stats"
+params:
+  cache: FALSE
+  echo: TRUE
+  chrs: !r c(1:22,"MT") ##INPUT chromosomes in genome to use - must be a vector (not just a number)
+  genome_c_stats_rds: 'genome_c_stats.Rds'  ##INPUT name of the genome stat file
+  run_spec: 'Sample run on hpc - All genome c stats on chrs 1 to MT separately' ##INPUT to be stored ine log file for the run
+  
+output:
+  html_document:
+      toc: FALSE
+---
+paste0('genome_c_trinucs-chr1-chrM-',Sys.Date(),'.Rds')
+```{r}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo, cache.comment=FALSE, purl=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide', eval=TRUE)
+```
+
+
+
+```{r, purl=TRUE}
+source('../../../utils/utils.R') ## functions
+source('../_libs.R') ## libraries
+```
+
+
+### Genome Cytosine Stats
+
+```{r}
+genome_c_stats <- tri_stats(anno_dt = NULL, genome = BSgenome.Hsapiens.UCSC.hg38, chrs = params$chrs)
+file_recorder(outFile = params$genome_c_stats_rds, logFile = 'genome_c_stats', logFolder = '__log',
+              run_spec = params$run_spec) ## update the run spec from params for a new run
+saveRDS(genome_c_stats , file=params$genome_c_stats_rds)
+```

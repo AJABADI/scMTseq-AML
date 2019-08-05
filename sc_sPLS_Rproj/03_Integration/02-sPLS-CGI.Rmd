@@ -1,0 +1,338 @@
+---
+title: "Integration"
+params:
+  cache: FALSE
+  echo: TRUE
+  run_spec: '.' ## INPUT to be stored ine log file for the run
+  
+  ## an parameter list should follow exactly the following format
+  IN: !r list(
+    met_expr = '../02_Methylation/02_QC_Methylation/met_exp.Rds',
+    utils = '../utils/utils.R',
+    sce_rna = '../../output/parsed/rna_sce_normalised_red_dims.Rds')
+    
+  OUT: !r list(
+    dir='.',
+    img = './img')
+  
+output:
+  html_document:
+      toc: FALSE
+---
+
+```{r}
+suppressMessages({
+## source libraries and functions
+source(params$IN$utils)
+library(data.table)
+library(ggplot2)
+library(mixOmics)
+})
+```
+
+
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=params$cache, echo=params$echo,  cache.comment=FALSE,
+                      fig.align = 'center',message=FALSE, warning=FALSE, results='hide')
+```
+
+## Data
+
+```{r}
+## make bed file for CGI
+library(annotatr)
+CGI_annotation <- build_annotations('hg38', annotations = 'hg38_cpg_islands')
+CGI_bed <- CGI_annotation %>% as.data.table() %>% .[,c(1:3,5:6)] %>%
+  setnames(c("chr","start","end","strand","id")) %>% .[,anno:='CGI'] %>% 
+  .[chr %in% paste0('chr',c(1:22,'M'))] %>% .[,strand:='+'] %>% .[,chr:=chr_conv(chr, style = 'ensembl')] %>% .[,id:=gsub(':','_',id)]
+write.table(CGI_bed, sep="\t",file = '../../data/scBSseq/filt/CGI.bed', row.names = FALSE, col.names = FALSE)
+out <- fread('../../data/scBSseq/filt/CGI.bed' ,sep="\t", header=F, verbose=F)
+out
+```
+
+```{r}
+CGI <- readRDS('../../data/scBSseq/met/CGI.rds')
+CGIstats <- readRDS('../../data/scBSseq/met/CGIwithStats.rds')
+sce_rna <- readRDS(params$IN$sce_rna)
+
+library(biomaRt)
+
+genes <- rownames(sce_rna)
+hsmart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+getbm <- getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id",
+"external_gene_name", "phenotype_description"),values=genes,mart= hsmart)
+bmDT <- as.data.table(getbm)
+## there are duplicates, but only becaose of many phenotypes:
+identical(bmDT[(duplicated(ensembl_gene_id) )],
+          bmDT[(duplicated(ensembl_gene_id) & duplicated(external_gene_name))] 
+)
+
+ensSym <- getbm[!duplicated(getbm$ensembl_gene_id),]
+ensSym <- ensSym[!duplicated(ensSym$external_gene_name),]
+ens2sym <- ensSym$external_gene_name %>% set_names(ensSym$ensembl_gene_id)
+sym2ens <- names(ens2sym) %>% set_names(ens2sym)
+## ensembl
+transcriptome <- t(logcounts(sce_rna))
+transcriptome %<>% .[,colnames(.) %in% sym2ens]
+sum(!colnames(transcriptome) %in% sym2ens)
+sum(sym2ens %in% colnames(transcriptome))/dim(transcriptome)[2]
+colnames(transcriptome) <- ens2sym[colnames(transcriptome) ]
+sum(duplicated(colnames(transcriptome)))
+## symbol
+# transcriptome_sym <- transcriptome
+# colnames(transcriptome_sym) <- make.unique(ens2sym[colnames(transcriptome)], sep='_')
+```
+
+
+```{r}
+metCGI <- dcast(CGI[cell_cov>=20][calls>=30], id~sample, value.var = 'rhat') %>% setkey('id') %>% data.frame(row.names = TRUE) %>%  t() %>% .[rownames(transcriptome),] 
+
+sum(is.na(metCGI))/prod(dim(metCGI))
+
+# CGI[id==selectVar(cgi_spls)$X$name[1]]
+```
+
+```{r}
+ncomp=4
+keeps=50
+
+keepS=rep(keeps, ncomp)
+cgi_spls <- spls(X = metCGI, Y = transcriptome, ncomp = ncomp, mode = "regression", keepX = keepS, keepY = keepS)
+# cgi_spls_sym <- spls(X = metCGI, Y = transcriptome_sym, ncomp = ncomp, mode = "regression", keepX = keepS, keepY = keepS)
+```
+
+```{r}
+plotIndiv(cgi_spls)
+```
+
+```{r}
+# tune.res <- tune.spls(X = t(metCGI), Y = t(transcriptome), ncomp = 3, test.keepX = c(25,50,75), measure = 'MAE')
+# plot(tune.res)
+```
+
+
+
+circosPlot
+
+```{r}
+source('../utils/circoPlot_spls.R')
+pdf('img/CGI-spls-circosplot-comp12.pdf')
+
+# markers12 <- c(selectVar(cgi_spls_sym, comp = 1)$Y$name,
+#             selectVar(cgi_spls_sym, comp = 2)$Y$name)
+
+# markers12 <- ens2sym[colnames(transcriptome)]
+# getbm$external_gene_name[grepl('\\..*$', x = getbm$external_gene_name )]
+# 
+# cgi_markers12 <- colnames(metCGI)
+# 
+#   # c(selectVar(cgi_spls_sym, comp = 1)$X$name,
+#   #           selectVar(cgi_spls_sym, comp = 2)$X$name)
+# 
+# varnames <- list( X=cgi_markers12,Y=markers12)
+circosPlot_spls(spls.obj = cgi_spls, line = FALSE, comp=c(1,2), cutoff = 0.7)
+dev.off()
+```
+
+CIM
+
+```{r}
+pdf('img/CGI-spls-cim.pdf')
+cim(cgi_spls)
+dev.off()
+```
+
+Phenotypes
+
+```{r}
+## remove the DOT index used
+markers <-selectVar(cgi_spls,comp=1)$Y$name
+getbm[getbm$external_gene_name %in% markers,]
+grep('leukemia',
+     getbm$phenotype_description[getbm$external_gene_name %in% markers],
+    value=TRUE)
+
+```
+
+
+
+```{r}
+pca.expression <- pca(X = t(transcriptome), ncomp=2)
+plotIndiv(pca.expression)
+pca.cgi <- pca(X= t(metCGI), ncomp=2)
+plotIndiv(pca.cgi)
+plot(pca.cgi)
+```
+```{r}
+plotLoadings(cgi_spls)
+```
+```{r}
+## see if abberrant methylation is observed in some cells for markers
+topCGIs <- selectVar(cgi_spls,comp = 1)$X$name[1:3]
+metCGI_gg <- as.data.frame(t(metCGI))
+ggplot(metCGI_gg, aes_string(y=topCGIs[1]), )+ geom_boxplot(na.rm = TRUE) +scale_y_log10() 
+
+# + stat_summary(
+#     aes(label = round(stat(y), 1)),
+#     geom = "text", 
+#     fun.y = function(y) { o <- boxplot.stats(y)$out; if(length(o) == 0) NA else o },
+#     hjust = -1
+#   )
+```
+```{r}
+comp=1
+nmarker=2
+hyper=10
+
+cgi_marker <- selectVar(cgi_spls,comp = comp)$X$name[nmarker]
+metCGI_gg[,cgi_marker]
+CGI[id==cgi_marker]
+## color pca by marker methylation
+col <- metCGI_gg[,cgi_marker]
+col[is.na(col)] <- -1
+col[col>0 & col<hyper] <- 0
+col[col>hyper] <- 1
+col
+col <- factor(col, levels = c(-1,0,1) , labels=c('grey40', 'blue', 'red'))
+col
+# plotIndiv(pca.expression, col = col)
+ggplot(umap.res, aes(UMAP_1, UMAP_2, label=rownames(umap.res)))+ geom_point() +geom_label( fill=col)
+```
+```{r}
+library(uwot)
+umap.res <- tumap(X = t(transcriptome))
+umap.res <- data.frame(umap.res, row.names = colnames(transcriptome)) %>% set_colnames(c('UMAP_1', 'UMAP_2'))
+ggplot(umap.res, aes(UMAP_1, UMAP_2, label=rownames(umap.res)))+ geom_point() +geom_label( fill=col)
+```
+
+
+
+```{r}
+saveRDS(cgi_spls, file='../../output/cgi_spls_cov20calls30.rds')
+```
+```{r}
+plotIndiv(cgi_spls, comp = c(1,3))
+```
+
+
+The transcriptome signature which is highly correlated with CGI methylome vaeriation, will probably include some AML markers.
+
+
+```{r}
+plotLoadings(cgi_spls, comp=1)
+```
+
+loading plots show that the methylation signature are all hypermethylated as mentioned in literature. This hypermethylation is expected to downregulated tumour suppressors and upregulate AML markers.
+Hence, we enrich terms based on loadings:
+
+```{r}
+exp_ld <- selectVar(cgi_spls, comp = 1)$Y$value
+exp_ld <- exp_ld$value.var %>% set_names(rownames(exp_ld))
+downregs <- exp_ld[exp_ld<0]
+upregs <- exp_ld[exp_ld>0]
+```
+
+```{r}
+## all markers against all genes - comp 1
+GOget.res <- GOget(cgi_spls, dat="Y", comp=1,  ID="ensembl", mapping="org.Hs.eg.db", feas_genes = NULL )
+goEnrich.res <- goEnrich(GOget.res)
+GOplot.res <- GOplot(goEnrich.res, trms = list(leuk='leukemia'), maxEnrich = 5, col = color.mixo(c(1,8)))
+pdf('img/CGI-GO-comp1-markers-against-all.pdf')
+GOplot.res
+dev.off()
+```
+
+```{r}
+## all markers against all genes - comp 2
+GOget.res.comp2 <- GOget(cgi_spls, dat="Y", comp=2,  ID="ensembl", mapping="org.Hs.eg.db", feas_genes = NULL )
+goEnrich.res.comp2 <- goEnrich(GOget.res.comp2)
+GOplot.res <- GOplot(goEnrich.res.comp2, trms = list(leuk='leuk'))
+GOplot.res
+```
+
+
+```{r}
+## all markers against all genes - comp = 1:2
+subset <- c(selectVar(cgi_spls, comp = 1)$Y$name,
+            selectVar(cgi_spls, comp = 2)$Y$name)
+sym2ens[subset]
+boxplot(pearson_value[anno=='genebody'][id %in% sym2ens[subset]]$correlation)
+# 
+# subset %<>% .[!duplicated(.)]
+
+## 
+GOget.res.comp12 <- GOget(cgi_spls, dat="Y", comps = 1:2,  ID="symbol", mapping="org.Hs.eg.db", feas_genes = NULL )
+goEnrich.res.comp12 <- goEnrich(GOget.res.comp12)
+GOplot.res <- GOplot(goEnrich.res.comp12, trms = list(leuk='leuk'), maxEnrich = 5, col = c('grey35', color.mixo(2)))
+pdf('img/CGI-GO-comp12-spls-expr-markers.pdf')
+GOplot.res
+dev.off()
+```
+
+```{r}
+## enriched terms in markers themselves
+GOget.markers.res <- GOget(cgi_spls, dat="Y", comp=1,  ID="ensembl", mapping="org.Hs.eg.db", feas_genes = exp_ld )
+goEnrich.markers.res <- goEnrich(GOget.markers.res)
+GOplot.res <- GOplot(goEnrich.markers.res, trms = list(leuk='leuk'))
+GOplot.res
+```
+
+regulatory terms only
+
+```{r}
+## enriched terms in negative loading ones against all markers
+GOget.NL.res <- GOget(cgi_spls, dat="Y", comp=1,  ID="ensembl", mapping="org.Hs.eg.db",subset = downregs, feas_genes = exp_ld)
+goEnrich.NL.res <- goEnrich(GOget.NL.res)
+GOplot.res <- GOplot(goEnrich.markers.res, trms = list(leuk='leuk'))
+GOplot.res
+```
+
+blockspls(X=list(intergenic, cgi),  Y=expression)
+
+```{r}
+Xblock=list(CGI=metCGI, Intergenic=spls_full$regression$intergenic$Xorig)
+blockspls <- block.spls(X=Xblock, Y = transcriptome,ncomp = 2, keepX = list(CGI=c(50,50),Intergenic= c(50,50)), keepY = c(50,50), mode = 'regression')
+
+```
+```{r}
+pdf('img/blockspls-cgi-intergenic-network.pdf')
+network(blockspls, name.save = 'foo', cutoff = 0.95)
+dev.off()
+```
+
+
+```{r}
+pdf('img/blockspls-cgi-intergenic-plotVar.pdf')
+plotVar(blockspls, pch=c(17,16,15), legend = TRUE)
+dev.off()
+```
+
+
+blockspls(X=list(genebody, cgi),  Y=expression)
+
+```{r}
+onames <- c('CGI Methylome', 'Genebody Methylome')
+Xblock=list(metCGI, spls_full$regression$genebody$Xorig)
+names(Xblock) <- onames
+ncomp=2
+keepX <- rep(list(rep(50, ncomp)),length(Xblock)) %>% set_names(onames)
+blockspls <- block.spls(X=Xblock, Y = transcriptome,ncomp = ncomp, keepX =keepX, keepY = c(50,50), mode = 'regression')
+
+```
+```{r}
+pdf('img/blockspls-cgi-intergenic-network.pdf')
+network(blockspls, name.save = 'foo', cutoff = 0.95)
+dev.off()
+```
+
+
+```{r}
+pdf('img/blockspls-cgi-intergenic-plotVar.pdf', width = 11, height = 8)
+plotVar(blockspls, pch=c(17,16,15), cutoff = 0.6,  legend.title = 'Omic', 
+        legend=TRUE, col = color.mixo(c(1,2,4)))
+dev.off()
+```
+
+
+
