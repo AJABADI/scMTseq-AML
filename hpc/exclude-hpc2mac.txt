@@ -1,0 +1,9 @@
+# any folder or file strating with __
+**/__*
+
+# all the hidden files
+**/.*
+
+# cache
+**/*_cache
+

@@ -1,0 +1,16 @@
+## From mac
+
+```{bash}
+cd ~/Documents/_Projects/sc_sPLS
+rsync -avz --exclude-from='exclude-mac2hpc.txt'  --delete ~/Documents/_Projects/sc_sPLS/ ajabadi@spartan.hpc.unimelb.edu.au:/data/cephfs/punim0613/AL/sc_sPLS/
+
+```
+
+
+## From HPC
+
+```{bash}
+cd ~/Documents/_Projects/sc_sPLS
+rsync -avz --exclude-from='_hpc-exclude.txt' --exclude='**/.*' --delete ~/Documents/_Projects/sc_sPLS/ ajabadi@spartan.hpc.unimelb.edu.au:/data/cephfs/punim0613/AL/sc_sPLS/
+
+```
